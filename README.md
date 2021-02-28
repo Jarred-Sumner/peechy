@@ -115,7 +115,16 @@ When Kiwi is decoding a struct or message, instead of creating a new object each
 
 This is a way to reduce garbage collection pressure. I'm not sure yet whether I will generate the allocators automatically or not.
 
+#### SharedArrayBuffer
+
+If `SharedArrayBuffer` is available, it will use that instead of `ArrayBuffer`. This is configurable by setting `ArrayBufferType` on `ByteBuffer`.
+
+#### ByteBuffer.WIGGLE_ROOM
+
+If you want to reduce tne number of times the ArrayBuffer is reallocated by over-allocating, you can set a number to multiply the amount it grows by. I haven't benchmarked if this makes it faster yet but it probably would (at a cost of more memory)
+
 --- Original readme ---
+
 Kiwi is a schema-based binary format for efficiently encoding trees of data.
 It's inspired by Google's [Protocol Buffer](https://developers.google.com/protocol-buffers/) format but is simpler, has a more compact encoding, and has better support for optional fields.
 
