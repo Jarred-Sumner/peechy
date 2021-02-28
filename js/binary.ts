@@ -1,8 +1,22 @@
 import { ByteBuffer } from "./bb";
 import { Schema, Field, Definition, DefinitionKind } from "./schema";
 
-let types: (string | null)[] = ['bool', 'byte', 'int', 'uint', 'float', 'string'];
-let kinds: DefinitionKind[] = ['ENUM', 'STRUCT', 'MESSAGE'];
+let types: (string | null)[] = [
+  "bool",
+  "byte",
+  "float",
+  "int",
+  "uint8",
+  "uint16",
+  "uint32",
+  "int8",
+  "int16",
+  "int32",
+  "float32",
+  "string",
+  "uint",
+];
+let kinds: DefinitionKind[] = ["ENUM", "STRUCT", "MESSAGE", "UNION"];
 
 export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
   let bb = buffer instanceof ByteBuffer ? buffer : new ByteBuffer(buffer);
@@ -20,14 +34,16 @@ export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
       let fieldName = bb.readString();
       let type = bb.readVarInt();
       let isArray = !!(bb.readByte() & 1);
+      let isRequired = !!(bb.readByte() & 1);
       let value = bb.readVarUint();
 
       fields.push({
         name: fieldName,
         line: 0,
         column: 0,
-        type: kinds[kind] === 'ENUM' ? null : type as any,
+        type: kinds[kind] === "ENUM" ? null : (type as any),
         isArray: isArray,
+        isRequired,
         isDeprecated: false,
         value: value,
       });
@@ -47,24 +63,22 @@ export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
     let fields = definitions[i].fields;
     for (let j = 0; j < fields.length; j++) {
       let field = fields[j];
-      let type = field.type as any as number | null;
+      let type = (field.type as any) as number | null;
 
       if (type !== null && type < 0) {
         if (~type >= types.length) {
-          throw new Error('Invalid type ' + type);
+          throw new Error("Invalid type " + type);
         }
         field.type = types[~type];
-      }
-
-      else {
+      } else {
         if (type !== null && type >= definitions.length) {
-          throw new Error('Invalid type ' + type);
+          throw new Error("Invalid type " + type);
         }
         field.type = type === null ? null : definitions[type].name;
       }
     }
   }
-
+  console.log(definitions);
   return {
     package: null,
     definitions: definitions,
@@ -74,7 +88,7 @@ export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
 export function encodeBinarySchema(schema: Schema): Uint8Array {
   let bb = new ByteBuffer();
   let definitions = schema.definitions;
-  let definitionIndex: {[name: string]: number} = {};
+  let definitionIndex: { [name: string]: number } = {};
 
   bb.writeVarUint(definitions.length);
 
@@ -96,6 +110,7 @@ export function encodeBinarySchema(schema: Schema): Uint8Array {
       bb.writeString(field.name);
       bb.writeVarInt(type === -1 ? definitionIndex[field.type!] : ~type);
       bb.writeByte(field.isArray ? 1 : 0);
+      bb.writeByte(field.isRequired ? 1 : 0);
       bb.writeVarUint(field.value);
     }
   }

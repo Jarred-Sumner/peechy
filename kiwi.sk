@@ -1,3 +1,4 @@
+
 namespace Kiwi {
   var _int32 = Int32Array.new(1)
   var _float32 = Float32Array.new(_int32.buffer)

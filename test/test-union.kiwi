@@ -1,0 +1,126 @@
+package test;
+
+enum Enum {
+  A = 100;
+  B = 200;
+}
+
+struct EnumStruct { Enum x; Enum[] y; }
+
+struct BoolStruct { bool x; }
+struct ByteStruct { byte x; }
+struct IntStruct { int x; }
+struct UintStruct { uint x; }
+struct FloatStruct { float x; }
+struct StringStruct { string x; }
+struct CompoundStruct { uint x; uint y; }
+struct NestedStruct { uint a; CompoundStruct b; uint c; }
+
+message BoolMessage { bool x = 1; }
+message ByteMessage { byte x = 1; }
+message IntMessage { int x = 1; }
+message UintMessage { uint x = 1; }
+message FloatMessage { float x = 1; }
+message CompoundMessage { uint x = 1; uint y = 2; }
+message NestedMessage { uint a = 1; CompoundMessage b = 2; uint c = 3; }
+
+message NestedMessageWithRequiredFields { uint a = 1; CompoundMessage b = 2 [!]; uint c = 3; }
+
+message Int8Message { int8 x = 1; }
+message Int16Message { int16 x = 1; }
+message Int32Message { int32 x = 1; }
+message Uint16Message { uint16 x = 1; }
+message Uint32Message { uint32 x = 1; }
+message Float32Message { float32 x = 1; }
+message StringMessage { string x = 1; }
+
+message Int8ArrayMessage { int8[] x = 1; }
+message Int16ArrayMessage { int16[] x = 1; }
+message Int32ArrayMessage { int32[] x = 1; }
+message Uint16ArrayMessage { uint16[] x = 1; }
+message Uint32ArrayMessage { uint32[] x = 1; }
+message Float32ArrayMessage { float32[] x = 1; }
+
+
+struct Int8Struct { int8 x; }
+struct Int16Struct { int16 x; }
+struct Int32Struct { int32 x; }
+struct Uint16Struct { uint16 x; }
+struct Uint32Struct { uint32 x; }
+struct Float32Struct { float32 x; }
+
+struct Int8ArrayStruct { int8[] x; }
+struct Int16ArrayStruct { int16[] x; }
+struct Int32ArrayStruct { int32[] x; }
+struct Uint16ArrayStruct { uint16[] x; }
+struct Uint32ArrayStruct { uint32[] x; }
+struct Float32ArrayStruct { float32[] x; }
+
+struct BoolArrayStruct { bool[] x; }
+struct ByteArrayStruct { byte[] x; }
+struct IntArrayStruct { int[] x; }
+struct UintArrayStruct { uint[] x; }
+struct FloatArrayStruct { float[] x; }
+struct StringArrayStruct { string[] x; }
+struct CompoundArrayStruct { uint[] x; uint[] y; }
+
+message BoolArrayMessage { bool[] x = 1; }
+message ByteArrayMessage { byte[] x = 1; }
+message IntArrayMessage { int[] x = 1; }
+message UintArrayMessage { uint[] x = 1; }
+message FloatArrayMessage { float[] x = 1; }
+message StringArrayMessage { string[] x = 1; }
+message CompoundArrayMessage { uint[] x = 1; uint[] y = 2; }
+
+message RecursiveMessage { RecursiveMessage x = 1; }
+
+message NonDeprecatedMessage {
+  uint a = 1;
+  uint b = 2;
+  uint[] c = 3;
+  uint[] d = 4;
+  ByteStruct e = 5;
+  ByteStruct f = 6;
+  uint g = 7;
+}
+
+message DeprecatedMessage {
+  uint a = 1;
+  uint b = 2 [deprecated];
+  uint[] c = 3;
+  uint[] d = 4 [deprecated];
+  ByteStruct e = 5;
+  ByteStruct f = 6 [deprecated];
+  uint g = 7;
+}
+
+// This tests sorting of fields in C++
+struct SortedStruct {
+  bool a1;
+  byte b1;
+  int c1;
+  uint d1;
+  float e1;
+  string f1;
+
+  bool a2;
+  byte b2;
+  int c2;
+  uint d2;
+  float e2;
+  string f2;
+
+  bool[] a3;
+  byte[] b3;
+  int[] c3;
+  uint[] d3;
+  float[] e3;
+  string[] f3;
+}
+
+
+union TestUnion = SortedStruct | DeprecatedMessage;
+
+struct StructWithUnion {
+  TestUnion ping;
+}

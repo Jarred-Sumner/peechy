@@ -3,7 +3,7 @@ export interface Schema {
   definitions: Definition[];
 }
 
-export type DefinitionKind = 'ENUM' | 'STRUCT' | 'MESSAGE';
+export type DefinitionKind = "ENUM" | "STRUCT" | "MESSAGE" | "ENTITY" | "UNION";
 
 export interface Definition {
   name: string;
@@ -18,6 +18,7 @@ export interface Field {
   line: number;
   column: number;
   type: string | null;
+  isRequired: boolean;
   isArray: boolean;
   isDeprecated: boolean;
   value: number;
