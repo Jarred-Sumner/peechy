@@ -12,10 +12,10 @@
   "scripts": {
     "cjs": "esbuild *.ts --format=cjs --outdir=.",
     "precjs": "rm ./*.d.ts; rm ./*.d.js; rm *.js",
-    "build": "npm run cjs; npm run browser-iife; npm run browser-esm;",
+    "build": "npm run cjs && npm run browser-iife && npm run browser-esm;",
     "browser-iife": "esbuild browser.ts --format=iife --bundle --global-name=peechy --platform=browser > browser.min.js",
-    "browser-esm": "esbuild browser.ts --format=esm --bundle --global-name=peechy --platform=browser > browser.js",
-    "typedefs": "tsc -d && ls *.ts | grep -v d.ts > .npmignore && echo tsconfig.json >> .npmignore",
+    "browser-esm": "esbuild browser.ts --format=esm --bundle --platform=browser > browser.js",
+    "typedefs": "tsc -d && ls *.ts",
     "prepublishOnly": "npm run browser && npm run typedefs"
   },
   "repository": {
