@@ -129,7 +129,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
     ) {
       let line: string;
       if (definition.kind === "UNION") {
-        line = indent + "export type " + definition.name + " =";
+        line = indent + "export type " + definition.name;
       } else if (unionFieldsCount) {
         line = indent + "interface Abstract" + definition.name;
       } else {
@@ -147,19 +147,27 @@ export function compileSchemaTypeScript(schema: Schema): string {
               ` extends (${discriminators[discriminator]} | undefined) = undefined`
           );
         }
-        line += "<" + discriminatorNames.join(" , ") + "> {";
+        line += "<" + discriminatorNames.join(" , ") + ">";
+        if (definition.kind === "UNION") {
+          line += " =";
+        }
+        line += " {";
         lines.push(line);
         index = 0;
         for (let discriminator in discriminators) {
           lines.push(indent + indent + `${discriminator}: U${index++};`);
         }
+        if (definition.kind === "UNION") {
+          lines.push("  }");
+        }
       } else if (definition.kind !== "UNION") {
         line += " {";
         lines.push(line);
       } else {
+        line += " = ";
         lines.push(line);
       }
-
+      let isFirstNewField = true;
       for (var j = 0; j < definition.fields.length; j++) {
         var field = definition.fields[j];
         var type;
@@ -204,6 +212,9 @@ export function compileSchemaTypeScript(schema: Schema): string {
         else if (field.isArray) type += "[]";
 
         if (definition.kind === "UNION") {
+          if (discriminators && isFirstNewField) {
+            lines.push(" & (");
+          }
           if (field.type !== "discriminator") {
             if (discriminatedTypes[field.type!]) {
               lines.push(
@@ -234,6 +245,8 @@ export function compileSchemaTypeScript(schema: Schema): string {
               ";"
           );
         }
+
+        isFirstNewField = false;
       }
 
       if (definition.kind === "UNION" && !discriminatedTypes[definition.name]) {
@@ -241,7 +254,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
           lines[lines.length - 1].substring(0, lines[lines.length - 1].length) +
           ";";
       } else if (definition.kind === "UNION") {
-        lines[lines.length - 1] += ";";
+        lines[lines.length - 1] += ");";
       } else {
         lines.push(indent + "}");
         lines.push("");
@@ -284,16 +297,56 @@ export function compileSchemaTypeScript(schema: Schema): string {
           .join(" & ");
 
         if (unionTypeString.length) {
+          let types = "";
+          let typeNames = "";
+          if (discriminators) {
+            let index = 0;
+            const discriminatorNames = [];
+            const typeNameList = [];
+            for (let discriminator in discriminators) {
+              const typeName = "U" + index++;
+              typeNameList.push(typeName);
+              discriminatorNames.push(
+                typeName +
+                  ` extends (${discriminators[discriminator]} | undefined) = undefined`
+              );
+            }
+            types = "<" + discriminatorNames.join(" , ") + ">";
+            typeNames = "<" + typeNameList.join(" , ") + ">";
+          }
+
           lines.push(
-            `export type ${definition.name} = Abstract${definition.name} & ${unionTypeString};`
+            `export type ${definition.name}${types} = Abstract${definition.name}${typeNames} & ${unionTypeString};`
           );
-        } else {
+        } else if (discriminators) {
+          let types = "";
+          let typeNames = "";
+
+          if (discriminators) {
+            let index = 0;
+            const discriminatorNames = [];
+            const typeNameList = [];
+            for (let discriminator in discriminators) {
+              const typeName = "U" + index++;
+              typeNameList.push(typeName);
+              discriminatorNames.push(
+                typeName +
+                  ` extends (${discriminators[discriminator]} | undefined) = undefined`
+              );
+            }
+            types = "<" + discriminatorNames.join(" , ") + ">";
+            typeNames = "<" + typeNameList.join(" , ") + ">";
+          }
+          lines.push(`
+            export interface ${definition.name}${types} extends Abstract${definition.name}${typeNames} {}
+          `);
+        } else if (definition.kind !== "UNION") {
           lines.push(
             `export interface ${definition.name} extends Abstract${definition.name} {};`
           );
         }
       }
-    } else if (definition.kind !== "ENUM" && definition.kind !== "ALIAS") {
+    } else if (definition.kind !== "ENUM") {
       error(
         "Invalid definition kind " + quote(definition.kind),
         definition.line,
