@@ -12,10 +12,13 @@ function isDiscriminatedUnion(
   return definitions[name].fields[0].type === "discriminator";
 }
 
+type AliasMap = { [name: string]: string };
+
 function compileDecode(
   definition: Definition,
   definitions: { [name: string]: Definition },
-  withAllocator: boolean = false
+  withAllocator: boolean = false,
+  aliases: AliasMap
 ): string {
   let lines: string[] = [];
   let indent = "  ";
@@ -82,6 +85,7 @@ function compileDecode(
     for (let i = 0; i < definition.fields.length; i++) {
       let field = definition.fields[i];
       let code: string;
+      if (aliases[field.type]) field.type = aliases[field.type];
 
       switch (field.type) {
         case "bool": {
@@ -320,7 +324,8 @@ function compileDecode(
 
 function compileEncode(
   definition: Definition,
-  definitions: { [name: string]: Definition }
+  definitions: { [name: string]: Definition },
+  aliases: AliasMap
 ): string {
   let lines: string[] = [];
 
@@ -396,6 +401,8 @@ function compileEncode(
     if (field.isDeprecated) {
       continue;
     }
+
+    if (aliases[field.type]) field.type = aliases[field.type];
 
     switch (field.type) {
       case "bool": {
@@ -600,6 +607,7 @@ function compileEncode(
 
 export function compileSchemaJS(schema: Schema, withAllocator = false): string {
   let definitions: { [name: string]: Definition } = {};
+  let aliases: { [name: string]: string } = {};
   let name = schema.package;
   let js: string[] = [];
 
@@ -620,10 +628,15 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
   for (let i = 0; i < schema.definitions.length; i++) {
     let definition = schema.definitions[i];
     definitions[definition.name] = definition;
+
+    if (definition.kind === "ALIAS") {
+      aliases[definition.name] = definition.fields[0].name;
+    }
   }
 
   for (let i = 0; i < schema.definitions.length; i++) {
     let definition = schema.definitions[i];
+    if (definition.kind === "ALIAS") continue;
 
     switch (definition.kind) {
       case "SMOL":
@@ -652,6 +665,7 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
         for (let j = 0; j < definition.fields.length; j++) {
           let field = definition.fields[j];
           if (field.value > 0) {
+            if (aliases[field.name]) field.name = aliases[field.name];
             value[field.name] = field.value;
             value[field.value] = field.value;
 
@@ -687,7 +701,7 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
             "[" +
             quote("decode" + definition.name) +
             "] = " +
-            compileDecode(definition, definitions, withAllocator) +
+            compileDecode(definition, definitions, withAllocator, aliases) +
             ";"
         );
         js.push("");
@@ -696,7 +710,7 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
             "[" +
             quote("encode" + definition.name) +
             "] = " +
-            compileEncode(definition, definitions) +
+            compileEncode(definition, definitions, aliases) +
             ";"
         );
         break;

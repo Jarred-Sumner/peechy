@@ -18,6 +18,23 @@ export let nativeTypes = [
   "discriminator",
 ];
 
+export let nativeTypeMap = {
+  bool: 1,
+  byte: 1,
+  float: 1,
+  int: 1,
+  uint8: 1,
+  uint16: 1,
+  uint32: 1,
+  int8: 1,
+  int16: 1,
+  int32: 1,
+  float32: 1,
+  string: 1,
+  uint: 1,
+  discriminator: 1,
+};
+
 // These are special names on the object returned by compileSchema()
 export let reservedNames = ["ByteBuffer", "package", "Allocator"];
 
@@ -38,6 +55,7 @@ let packageKeyword = /^package$/;
 let pick = /^pick$/;
 let entityKeyword = /^entity$/;
 let structKeyword = /^struct$/;
+let aliasKeyword = /^alias$/;
 let unionKeyword = /^union$/;
 let messageKeyword = /^message$/;
 let deprecatedToken = /^\[deprecated\]$/;
@@ -151,6 +169,7 @@ function parse(tokens: Token[]): Schema {
     else if (eat(messageKeyword)) kind = "MESSAGE";
     else if (eat(entityKeyword)) kind = "ENTITY";
     else if (eat(unionKeyword)) kind = "UNION";
+    else if (eat(aliasKeyword)) kind = "ALIAS";
     else unexpectedToken();
 
     // All definitions start off the same except union
@@ -234,6 +253,21 @@ function parse(tokens: Token[]): Schema {
       } else {
         expect(semicolon, '";"');
       }
+    } else if (kind === "ALIAS") {
+      expect(equals, "=");
+      let field = current();
+      expect(identifier, "identifier");
+      fields.push({
+        type: "type",
+        name: field.text,
+        line: field.line,
+        column: field.column,
+        isArray: false,
+        isDeprecated: false,
+        isRequired: true,
+        value: 1,
+      });
+      expect(semicolon, ";");
     } else {
       if (kind === "STRUCT") {
         while (eat(extendsToken)) {
@@ -496,6 +530,24 @@ function verify(root: Schema): void {
             field.column
           );
         }
+      }
+    } else if (definition.kind === "ALIAS") {
+      const field = definition.fields[0];
+      if (!field)
+        error("Expected alias name", definition.line, definition.column);
+
+      if (field.type !== "type")
+        error(
+          "Expected field type to be defined",
+          definition.line,
+          definition.column
+        );
+      if (!(definitions[field.name] || nativeTypeMap[field.name])) {
+        error(
+          "Expected type used in alias to exist.",
+          definition.line,
+          definition.column
+        );
       }
     } else {
       for (let j = 0; j < fields.length; j++) {

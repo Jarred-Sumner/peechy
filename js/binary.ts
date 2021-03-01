@@ -16,7 +16,14 @@ let types: (string | null)[] = [
   "string",
   "uint",
 ];
-let kinds: DefinitionKind[] = ["ENUM", "STRUCT", "MESSAGE", "UNION", "SMOL"];
+let kinds: DefinitionKind[] = [
+  "ENUM",
+  "STRUCT",
+  "MESSAGE",
+  "UNION",
+  "SMOL",
+  "ALIAS",
+];
 
 export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
   let bb = buffer instanceof ByteBuffer ? buffer : new ByteBuffer(buffer);

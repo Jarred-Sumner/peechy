@@ -10,7 +10,8 @@ export type DefinitionKind =
   | "ENTITY"
   | "UNION"
   | "SMOL"
-  | "PICK";
+  | "PICK"
+  | "ALIAS";
 
 export interface Definition {
   name: string;

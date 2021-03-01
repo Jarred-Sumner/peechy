@@ -100,6 +100,69 @@ union PlayerUpdate = PositionUpdate | DirectionUpdate | NameChange;
 
 `pick` with `union` simplifies handling specific types of updates when updating groups of properties together. Nested pick is undefined behavior and probably won't work.
 
+#### & modifier
+
+This inlines 1+ struct/messages into a new struct/message (appending fields in order).
+
+```
+struct BaseEditorCommand {
+  string transactionId;
+  string timestamp;
+}
+
+struct BaseNodeUpdate & BaseEditorCommand {
+  string id;
+}
+
+struct NodeParentUpdate & BaseNodeUpdate {
+  Parent parent;
+}
+
+struct NodePropsUpdate & BaseNodeUpdate {
+  Props props;
+}
+```
+
+Which generates:
+
+```ts
+export interface NodeParentUpdate {
+  parent: Parent;
+  id: string;
+  transactionId: string;
+  timestamp: string;
+}
+
+export interface NodePropsUpdate {
+  props: Props;
+  id: string;
+  transactionId: string;
+  timestamp: string;
+}
+```
+
+#### alias keyword
+
+`alias` lets you redefine one type as another. Like this:
+
+```
+alias ID = string;
+
+struct Node {
+  ID id;
+}
+```
+
+Which outputs:
+
+```ts
+export type ID = string;
+
+export interface Node {
+  id: ID;
+}
+```
+
 #### TypeScript enums
 
 Kiwi originally compiled enums like this:
@@ -204,7 +267,7 @@ message Foo {
 }
 ```
 
-The generated type for that property will no longer be optional. This currently has no runtime effect. Its just so the types are easier to work with.
+The generated type for that property will no longer be optional. This currently has no runtime effect. Its just so Visual Studio Code doesn't get mad when it shouldn't.
 
 Note: non-JS/TS languages are unsupported but maybe that will change in the future.
 

@@ -70,9 +70,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
       }
 
       lines.push(indent + "}");
-    }
-
-    if (definition.kind === "ENUM") {
+    } else if (definition.kind === "ENUM") {
       if (!definition.fields.length) {
         lines.push(indent + "export type " + definition.name + " = any;");
       } else {
@@ -92,6 +90,15 @@ export function compileSchemaTypeScript(schema: Schema): string {
 
         lines.push(indent + "}");
       }
+    } else if (definition.kind === "ALIAS") {
+      lines.push(
+        indent +
+          "export type " +
+          definition.name +
+          " = " +
+          definition.fields[0].name +
+          ";"
+      );
     }
   }
 
@@ -285,7 +292,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
           );
         }
       }
-    } else if (definition.kind !== "ENUM") {
+    } else if (definition.kind !== "ENUM" && definition.kind !== "ALIAS") {
       error(
         "Invalid definition kind " + quote(definition.kind),
         definition.line,

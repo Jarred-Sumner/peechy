@@ -1,6 +1,6 @@
 {
   "name": "peechy",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A schema-based binary format for efficiently encoding trees of data",
   "license": "MIT",
   "main": "peechy.js",
@@ -16,7 +16,7 @@
     "browser-iife": "esbuild browser.ts --format=iife --bundle --global-name=peechy --platform=browser > browser.min.js",
     "browser-esm": "esbuild browser.ts --format=esm --bundle --platform=browser > browser.js",
     "typedefs": "tsc -d && ls *.ts",
-    "prepublishOnly": "npm run browser && npm run typedefs"
+    "prepublishOnly": "npm run build && npm run typedefs"
   },
   "repository": {
     "type": "git",
