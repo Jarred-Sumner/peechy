@@ -2,6 +2,10 @@
   "compilerOptions": {
     "target": "es6",
     "module": "es6",
-    "strict": true
+    "strict": false,
+    "baseUrl": ".",
+    "paths": {
+      "kiwi-schema/ByteBuffer": ["./bb"]
+    }
   }
 }

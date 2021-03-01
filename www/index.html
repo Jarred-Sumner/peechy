@@ -1,4 +1,4 @@
-<meta charset="utf8">
+<meta charset="utf8" />
 <title>Kiwi File Format Demo</title>
 <style>
   body {
@@ -6,7 +6,8 @@
     margin: 50px 0 50px 50px;
   }
 
-  h1, p {
+  h1,
+  p {
     padding-right: 50px;
     clear: both;
   }
@@ -30,7 +31,7 @@
     min-height: 300px;
     resize: vertical;
     margin: 0;
-    border: 1px solid #CCC;
+    border: 1px solid #ccc;
     border-radius: 5px;
     padding: 5px;
     font: 12px/130% Consolas, monospace;
@@ -58,12 +59,22 @@
   <h1>Kiwi File Format Demo</h1>
 
   <p>
-    See <a href="https://github.com/evanw/kiwi">https://github.com/evanw/kiwi</a> for more information.
+    See
+    <a href="https://github.com/evanw/kiwi">https://github.com/evanw/kiwi</a>
+    for more information.
   </p>
 
   <section>
     <h2>JSON</h2>
-    <textarea id="json" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">{
+    <textarea
+      id="json"
+      autofocus
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    >
+{
   "clientID": 100,
   "type": "POINTED",
   "colors": [
@@ -75,19 +86,33 @@
     }
   ]
 }
-</textarea>
+</textarea
+    >
   </section>
 
   <section>
     <h2>Binary</h2>
-    <textarea id="binary" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+    <textarea
+      id="binary"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    ></textarea>
   </section>
 
   <div class="spacer"></div>
 
   <section>
     <h2>Schema</h2>
-    <textarea id="schema" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">enum Type {
+    <textarea
+      id="schema"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    >
+enum Type {
   FLAT = 0;
   ROUND = 1;
   POINTED = 2;
@@ -105,68 +130,90 @@ message Example {
   Type type = 2;
   Color[] colors = 3;
 }
-</textarea>
+</textarea
+    >
   </section>
 
   <section>
     <h2>Log</h2>
-    <textarea id="log" readonly autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">Success</textarea>
+    <textarea
+      id="log"
+      readonly
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    >
+Success</textarea
+    >
   </section>
 </body>
-<script src="../js/kiwi.js"></script>
+<script src="../js/browser.min.js"></script>
 <script>
+  (function () {
+    var json = document.getElementById("json");
+    var binary = document.getElementById("binary");
+    var schema = document.getElementById("schema");
+    var log = document.getElementById("log");
 
-(function() {
-  var json = document.getElementById('json');
-  var binary = document.getElementById('binary');
-  var schema = document.getElementById('schema');
-  var log = document.getElementById('log');
-
-  function toHex(value) {
-    return Array.prototype.map.call(value, function(x) {
-      return (0x100 | x).toString(16).slice(-2);
-    }).join(' ');
-  }
-
-  function fromHex(value) {
-    return new Uint8Array(value.split(/[\s,]+/g).map(function(x) {
-      return '0x' + x | 0;
-    }));
-  }
-
-  function update() {
-    try {
-      var compiled = kiwi.compileSchema(schema.value);
-      var parts = schema.value.split(/\b(?:message|struct)\s+(\w+)\b/g);
-
-      if (parts.length < 2) {
-        throw new Error('No message or struct found');
-      }
-
-      // Encode using the last message found in the schema
-      var name = parts[parts.length - 2];
-
-      if (document.activeElement === json) {
-        binary.value = toHex(compiled['encode' + name](JSON.parse(json.value))) + '\n';
-      }
-
-      else if (document.activeElement === binary) {
-        json.value = JSON.stringify(compiled['decode' + name](fromHex(binary.value)), null, 2) + '\n';
-      }
-
-      log.value = 'Success';
+    function toHex(value) {
+      return Array.prototype.map
+        .call(value, function (x) {
+          return (0x100 | x).toString(16).slice(-2);
+        })
+        .join(" ");
     }
 
-    catch (e) {
-      var text = e + '';
-      log.value = e && e.stack ? (e.stack.slice(0, text.length) === text ? e.stack : text + '\n' + e.stack) : text;
+    function fromHex(value) {
+      return new Uint8Array(
+        value.split(/[\s,]+/g).map(function (x) {
+          return ("0x" + x) | 0;
+        })
+      );
     }
-  }
 
-  json.onfocus = binary.onfocus = schema.onfocus = update;
-  json.oninput = binary.oninput = schema.oninput = update;
-  json.onchange = binary.onchange = schema.onchange = update;
-  update();
-})();
+    function update() {
+      try {
+        var compiled = kiwi.compileSchema(schema.value);
+        var parts = schema.value.split(/\b(?:message|struct)\s+(\w+)\b/g);
 
+        if (parts.length < 2) {
+          throw new Error("No message or struct found");
+        }
+
+        // Encode using the last message found in the schema
+        var name = parts[parts.length - 2];
+
+        if (document.activeElement === json) {
+          const buffer = new compiled.ByteBuffer();
+          compiled["encode" + name](JSON.parse(json.value), buffer);
+          binary.value = toHex(buffer.toUint8Array()) + "\n";
+        } else if (document.activeElement === binary) {
+          json.value =
+            JSON.stringify(
+              compiled["decode" + name](
+                new compiled.ByteBuffer(fromHex(binary.value))
+              ),
+              null,
+              2
+            ) + "\n";
+        }
+
+        log.value = "Success";
+      } catch (e) {
+        var text = e + "";
+        log.value =
+          e && e.stack
+            ? e.stack.slice(0, text.length) === text
+              ? e.stack
+              : text + "\n" + e.stack
+            : text;
+      }
+    }
+
+    json.onfocus = binary.onfocus = schema.onfocus = update;
+    json.oninput = binary.oninput = schema.oninput = update;
+    json.onchange = binary.onchange = schema.onchange = update;
+    update();
+  })();
 </script>

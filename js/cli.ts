@@ -15,7 +15,7 @@ import { compileSchemaSkewTypes } from "./skew-types";
 
 let usage = [
   "",
-  "Usage: kiwic [OPTIONS]",
+  "Usage: peechy [OPTIONS]",
   "",
   "Options:",
   "",
@@ -24,10 +24,6 @@ let usage = [
   "  --js [PATH]           Generate JavaScript code.",
   "  --js-allocator        Allow passing an allocator.",
   "  --ts [PATH]           Generate TypeScript type definitions.",
-  "  --cpp [PATH]          Generate C++ code (tree style).",
-  "  --callback-cpp [PATH] Generate C++ code (callback style).",
-  "  --skew [PATH]         Generate Skew code.",
-  "  --skew-types [PATH]   Generate Skew type definitions.",
   "  --text [PATH]         Encode the schema as text.",
   "  --binary [PATH]       Encode the schema as a binary blob.",
   "  --root-type [NAME]    Set the root type for JSON.",
@@ -36,13 +32,10 @@ let usage = [
   "",
   "Examples:",
   "",
-  "  kiwic --schema test.kiwi --js test.js",
-  "  kiwic --schema test.kiwi --cpp test.h",
-  "  kiwic --schema test.kiwi --skew test.sk",
-  "  kiwic --schema test.kiwi --binary test.bkiwi",
-  "  kiwic --schema test.bkiwi --text test.kiwi",
-  "  kiwic --schema test.kiwi --root-type Test --from-json buffer.json",
-  "  kiwic --schema test.kiwi --root-type Test --to-json buffer.bin",
+  "  peechy --schema test.kiwi --js test.js --ts test.ts",
+  "  peechy --schema test.kiwi --binary test.bkiwi",
+  "  peechy --schema test.kiwi --root-type Test --from-json buffer.json",
+  "  peechy --schema test.kiwi --root-type Test --to-json buffer.bin",
   "",
 ].join("\n");
 

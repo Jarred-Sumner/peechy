@@ -313,7 +313,7 @@ export class ByteBuffer {
     );
   }
 
-  writeInt8ByteArray(value: Uint8Array): void {
+  writeInt8ByteArray(value: Int8Array): void {
     this.writeByteArray(
       new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
     );
@@ -396,6 +396,14 @@ export class ByteBuffer {
 
   writeVarInt(value: number): void {
     this.writeVarUint((value << 1) ^ (value >> 31));
+  }
+
+  writeInt8(value: number): void {
+    let index = this.length;
+    this._growBy(1);
+    // TODO: see if DataView is faster
+    int8Buffer[0] = value;
+    this._data[index++] = uint8Buffer[0];
   }
 
   writeInt16(value: number): void {

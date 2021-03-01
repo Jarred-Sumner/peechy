@@ -1,6 +1,16 @@
 import { Schema, Definition } from "./schema";
 import { ByteBuffer } from "./bb";
 import { error, quote } from "./util";
+import { parseSchema } from "./parser";
+
+function isDiscriminatedUnion(
+  name: string,
+  definitions: { [name: string]: Definition }
+) {
+  if (!definitions[name]) return false;
+  if (!definitions[name].fields.length) return false;
+  return definitions[name].fields[0].type === "discriminator";
+}
 
 function compileDecode(
   definition: Definition,
@@ -11,23 +21,41 @@ function compileDecode(
   let indent = "  ";
 
   if (definition.kind === "UNION") {
-    lines.push("function(type, bb) {");
-    lines.push("  if (!(bb instanceof this.ByteBuffer)) {");
-    lines.push("    bb = new this.ByteBuffer(bb);");
-    lines.push("  }");
+    const hasDiscriminator = isDiscriminatedUnion(definition.name, definitions);
+    if (hasDiscriminator) {
+      lines.push("function(bb) {");
+    } else {
+      lines.push("function(bb, type = 0) {");
+    }
+
     lines.push("");
 
-    lines.push("    switch (type) {");
-    lines.push("    case 0:");
-    lines.push("      return null;");
-    indent = "      ";
-
-    for (let i = 0; i < definition.fields.length; i++) {
-      let field = definition.fields[i];
-      lines.push(
-        `    case ${field.value}:`,
-        indent + "return this[" + quote("decode" + field.name) + "](bb);"
-      );
+    if (hasDiscriminator) {
+      lines.push("  switch (bb.readVarUint()) {");
+      indent = "      ";
+      for (let i = 1; i < definition.fields.length; i++) {
+        let field = definition.fields[i];
+        lines.push(
+          `    case ${field.value}:`,
+          indent +
+            "var result = this[" +
+            quote("decode" + field.name) +
+            "](bb);",
+          indent +
+            `result[${quote(definition.fields[0].name)}] = ${field.value};`,
+          indent + `return result;`
+        );
+      }
+    } else {
+      lines.push("  switch (type) {");
+      indent = "      ";
+      for (let i = 0; i < definition.fields.length; i++) {
+        let field = definition.fields[i];
+        lines.push(
+          `    case ${field.value}:`,
+          indent + "return this[" + quote("decode" + field.name) + "](bb);"
+        );
+      }
     }
   } else {
     if (!withAllocator) {
@@ -40,9 +68,6 @@ function compileDecode(
       );
     }
 
-    lines.push("  if (!(bb instanceof this.ByteBuffer)) {");
-    lines.push("    bb = new this.ByteBuffer(bb);");
-    lines.push("  }");
     lines.push("");
 
     if (definition.kind === "MESSAGE") {
@@ -133,6 +158,8 @@ function compileDecode(
             );
           } else if (type.kind === "ENUM") {
             code = "this[" + quote(type.name) + "][bb.readVarUint()]";
+          } else if (type.kind === "SMOL") {
+            code = "this[" + quote(type.name) + "][bb.readByte()]";
           } else {
             code = "this[" + quote("decode" + type.name) + "](bb)";
           }
@@ -234,6 +261,14 @@ function compileDecode(
             }
           }
         }
+      } else if (field.type && isDiscriminatedUnion(field.type, definitions)) {
+        lines.push(
+          indent +
+            "result[" +
+            quote(field.name) +
+            "] = " +
+            `this[${quote("decode" + field.type)}](bb);`
+        );
       } else if (
         field.type &&
         definitions[field.type] &&
@@ -246,7 +281,7 @@ function compileDecode(
             "result[" +
             quote(field.name) +
             "] = " +
-            `this[${quote("decode" + field.type)}](result[${key}], bb);`
+            `this[${quote("decode" + field.type)}](bb, result[${key}]);`
         );
       } else {
         if (field.isDeprecated) {
@@ -272,9 +307,7 @@ function compileDecode(
     lines.push("  }");
   } else if (definition.kind === "UNION") {
     lines.push("    default:");
-    lines.push(
-      '      throw new Error("Attempted to parse invalid union. Make sure constructor.name is set when encoding.");'
-    );
+    lines.push(`      throw new Error("Attempted to parse invalid union");`);
     lines.push("  }");
   } else {
     lines.push("  return result;");
@@ -292,13 +325,69 @@ function compileEncode(
   let lines: string[] = [];
 
   if (definition.kind === "UNION") {
-    lines.push("function(message, bb) {");
+    const discriminator = definition.fields[0];
+    const hasDiscriminator = discriminator.type === "discriminator";
+
+    lines.push("function(message, bb, type = 0) {");
+    if (hasDiscriminator) {
+      lines.push(
+        `  type = type ? type : this[${quote(definition.name)}][message[${quote(
+          discriminator.name
+        )}]];`
+      );
+      lines.push(
+        `  if (!type) throw new Error('Expected message[${quote(
+          discriminator.name
+        )}] to be one of ' + JSON.stringify(this[${quote(
+          definition.name
+        )}]) + ' ');`
+      );
+    } else {
+      lines.push(
+        `  if (!type) throw new Error('Expected type to be one of ' + JSON.stringify(this[${quote(
+          definition.name
+        )}], null, 2) + ' ');`
+      );
+    }
+
+    lines.push("");
+
+    lines.push(`  bb.writeVarUint(type);`);
+
+    lines.push("");
+
+    lines.push(`  switch (type) {`);
+
+    for (let j = hasDiscriminator ? 1 : 0; j < definition.fields.length; j++) {
+      let field = definition.fields[j];
+      let code: string;
+
+      if (field.isDeprecated) {
+        continue;
+      }
+
+      lines.push(`    case ${field.value}: {`);
+      lines.push(`      this[${quote("encode" + field.name)}](message, bb)`);
+      lines.push(`      break;`);
+      lines.push(`    }`);
+    }
+    lines.push(`    default: {`);
+    lines.push(
+      `      throw new Error('Expected message[${quote(
+        discriminator.name
+      )}] to be one of ' + JSON.stringify(this[${quote(
+        definition.name
+      )}]) + ' ');`
+    );
+    lines.push(`    }`);
+
+    lines.push(`  }`);
+    lines.push("");
+    lines.push("}");
+    return lines.join("\n");
   } else {
     lines.push("function(message, bb) {");
   }
-
-  lines.push("  var isTopLevel = !bb;");
-  lines.push("  if (isTopLevel) bb = new this.ByteBuffer();");
 
   for (let j = 0; j < definition.fields.length; j++) {
     let field = definition.fields[j];
@@ -345,7 +434,7 @@ function compileEncode(
       }
 
       case "uint8": {
-        code = "bb.writeUint8(value);";
+        code = "bb.writeByte(value);";
         break;
       }
 
@@ -374,6 +463,11 @@ function compileEncode(
         break;
       }
 
+      case "discriminator": {
+        code = `bb.writeVarUint(type);`;
+        break;
+      }
+
       default: {
         let type = definitions[field.type!];
         if (!type) {
@@ -392,6 +486,20 @@ function compileEncode(
             quote(" for enum " + quote(type.name)) +
             ");\n" +
             "bb.writeVarUint(encoded);";
+        } else if (type.kind === "SMOL") {
+          code =
+            "var encoded = this[" +
+            quote(type.name) +
+            "][value];\n" +
+            'if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + ' +
+            quote(" for enum " + quote(type.name)) +
+            ");\n" +
+            "bb.writeByte(encoded);";
+        } else if (
+          type.kind === "UNION" &&
+          isDiscriminatedUnion(type.name, definitions)
+        ) {
+          code = "this[" + quote("encode" + type.name) + "](value, bb);";
         } else if (type.kind === "UNION") {
           code =
             "var encoded = this[" +
@@ -402,7 +510,7 @@ function compileEncode(
             )} to be one of ' + JSON.stringify(value) + ' for enum ${quote(
               type.name
             )}');
-    bb.writeVarUint(encoded);`;
+              bb.writeVarUint(encoded);`;
           code += "this[" + quote("encode" + type.name) + "](value, bb);";
         } else {
           code = "this[" + quote("encode" + type.name) + "](value, bb);";
@@ -411,8 +519,13 @@ function compileEncode(
     }
 
     lines.push("");
-    lines.push("  var value = message[" + quote(field.name) + "];");
-    lines.push("  if (value != null) {"); // Comparing with null using "!=" also checks for undefined
+
+    if (field.type === "discriminator") {
+      error("Unexpected discriminator", field.line, field.column);
+    } else {
+      lines.push("  var value = message[" + quote(field.name) + "];");
+      lines.push("  if (value != null) {"); // Comparing with null using "!=" also checks for undefined
+    }
 
     if (definition.kind === "MESSAGE") {
       lines.push("    bb.writeVarUint(" + field.value + ");");
@@ -480,7 +593,6 @@ function compileEncode(
   }
 
   lines.push("");
-  lines.push("  if (isTopLevel) return bb.toUint8Array();");
   lines.push("}");
 
   return lines.join("\n");
@@ -502,7 +614,7 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
     name +
       ".ByteBuffer = " +
       name +
-      '.ByteBuffer || require("kiwi-schema").ByteBuffer;'
+      '.ByteBuffer || require("peechy").ByteBuffer;'
   );
 
   for (let i = 0; i < schema.definitions.length; i++) {
@@ -514,12 +626,13 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
     let definition = schema.definitions[i];
 
     switch (definition.kind) {
+      case "SMOL":
       case "ENUM": {
         let value: any = {};
         for (let j = 0; j < definition.fields.length; j++) {
           let field = definition.fields[j];
           value[field.name] = field.value;
-          value[field.value] = field.name;
+          value[field.value] = field.value;
         }
         js.push(
           name +
@@ -538,10 +651,13 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
         encoders.fill("() => null");
         for (let j = 0; j < definition.fields.length; j++) {
           let field = definition.fields[j];
-          value[field.name] = field.value;
-          value[field.value] = field.name;
-          encoders[field.value] =
-            name + "[" + quote("encode" + field.type) + "]";
+          if (field.value > 0) {
+            value[field.name] = field.value;
+            value[field.value] = field.value;
+
+            encoders[field.value] =
+              name + "[" + quote("encode" + field.type) + "]";
+          }
         }
         js.push(
           name +
@@ -606,13 +722,18 @@ interface IAllocator {
 }
 
 export function compileSchema(
-  schema: Schema,
+  schema: Schema | string,
   Allocator?: { [key: string]: IAllocator }
 ): any {
-  let result = {
-    Allocator,
-    ByteBuffer: ByteBuffer,
-  };
+  let result = Allocator
+    ? {
+        Allocator,
+        ByteBuffer: ByteBuffer,
+      }
+    : { ByteBuffer };
+  if (typeof schema === "string") {
+    schema = parseSchema(schema);
+  }
   const out = compileSchemaJS(schema, !!Allocator);
   new Function("exports", out)(result);
   return result;

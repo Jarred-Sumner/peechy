@@ -1,22 +1,26 @@
 {
-  "name": "kiwi-schema",
-  "version": "0.4.7",
+  "name": "peechy",
+  "version": "0.1.0",
   "description": "A schema-based binary format for efficiently encoding trees of data",
   "license": "MIT",
-  "main": "kiwi.js",
-  "types": "./kiwi.d.ts",
+  "main": "peechy.js",
+  "types": "peechy.d.ts",
+  "module": "browser.js",
   "bin": {
-    "kiwic": "cli.js"
+    "peechy": "cli.js"
   },
   "scripts": {
-    "build": "tsc -d",
-    "browser": "tsc -p tsconfig.browser.json && rollup browser.js --format=iife --name=kiwi | terser -cm > browser.min.js",
+    "cjs": "esbuild *.ts --format=cjs --outdir=.",
+    "precjs": "rm ./*.d.ts; rm ./*.d.js; rm *.js",
+    "build": "npm run cjs; npm run browser-iife; npm run browser-esm;",
+    "browser-iife": "esbuild browser.ts --format=iife --bundle --global-name=peechy --platform=browser > browser.min.js",
+    "browser-esm": "esbuild browser.ts --format=esm --bundle --global-name=peechy --platform=browser > browser.js",
     "typedefs": "tsc -d && ls *.ts | grep -v d.ts > .npmignore && echo tsconfig.json >> .npmignore",
     "prepublishOnly": "npm run browser && npm run typedefs"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/evanw/kiwi.git"
+    "url": "https://github.com/jarred-sumner/peechy.git"
   },
   "devDependencies": {
     "@types/node": "13.1.6",
@@ -24,6 +28,6 @@
     "rollup": "1.31.0",
     "skew": "0.7.43",
     "terser": "4.6.3",
-    "typescript": "3.7.4"
+    "typescript": "latest"
   }
 }

@@ -118,9 +118,72 @@ struct SortedStruct {
   string[] f3;
 }
 
+union TestUnion = SortedStruct | DeprecatedMessage {
+  type;
+}
+union TestUnion2 = Float32ArrayMessage | Int16ArrayMessage;
 
-union TestUnion = SortedStruct | DeprecatedMessage;
+union NestedUnion = TestUnion | TestUnion2;
+
+struct MultiUnion {
+  TestUnion test0;
+  TestUnion2 test1;
+  NestedUnion test2;
+}
 
 struct StructWithUnion {
   TestUnion ping;
 }
+
+struct StructWithMultipleUnions {
+  TestUnion ping;
+  TestUnion2 array;
+}
+
+struct StructUnionArray {
+  TestUnion[] ping;
+}
+
+struct Vector3 {
+  float x;
+  float y;
+  float z;
+}
+
+pick Vector2 : Vector3 {
+  x;
+  y;
+}
+
+struct Player {
+  float x;
+  float y;
+  float z;
+  float magnitude;
+  float directionX;
+  float directionY;
+  float directionZ;
+  bool onGround;
+  string username;
+}
+
+pick PositionUpdate : Player {
+  x;
+  y;
+  z;
+  onGround;
+}
+
+pick DirectionUpdate : Player {
+  directionX;
+  directionY;
+  directionZ;
+  magnitude;
+}
+
+pick NameChange : Player {
+  username;
+}
+
+union PlayerUpdate = PositionUpdate | DirectionUpdate | NameChange;
+

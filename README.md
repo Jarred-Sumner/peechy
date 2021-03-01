@@ -1,6 +1,12 @@
-# Kiwi Message Format
+# Peechy Message Format
 
-This is a WIP fork of evanw's excellent [Kiwi Message Format](https://github.com/evanw/kiwi) library. Note: Union types are incomplete and I haven't carefully tested the changes work correctly end-to-end besides reading the generated code.
+This is fork of evanw's excellent [Kiwi Message Format](https://github.com/evanw/kiwi).
+
+## Installation
+
+```
+yarn add peechy
+```
 
 ### Whats different with this fork?
 
@@ -17,12 +23,6 @@ message Kick {
 }
 
 union UpdateMessage = Welcome | Kick;
-
-struct ServerUpdate {
-  int tick;
-  int timestamp;
-  UpdateMessage update;
-}
 ```
 
 This will expect `updateType` to exist on `ServerUpdate`, which is an enum auto-generated from the union:
@@ -33,6 +33,72 @@ enum UpdateMessageType {
   Kick = 2,
 }
 ```
+
+However, if you're using an array or if you don't want the discriminator to be defined on the parent object, you can pass `union` a property name like this:
+
+```
+union UpdateMessage = Welcome | Kick {
+  messageType;
+}
+```
+
+This will expect `messageType` to be defined on `Welcome` and `Kick` when the union is encoded and will set `messageType` when the union is decoded.
+
+#### "Pick" type
+
+This is like `Pick<TypeName, "property", "names">` from TypeScript. Its shorthand for copy-pasting a handful of fields into a new struct from an existing struct. Unlike copy-pasting, if you change types used on the parent, it will inherit the changes.
+
+For example:
+
+```
+
+struct Player {
+  float x;
+  float y;
+  float z;
+  float magnitude;
+  float directionX;
+  float directionY;
+  float directionZ;
+  bool onGround;
+  string username;
+}
+
+pick PositionUpdate : Player {
+  x;
+  y;
+  z;
+  onGround;
+}
+```
+
+The types are copied from the parent.
+
+A union can contain picked elements:
+
+```proto
+pick PositionUpdate : Player {
+  x;
+  y;
+  z;
+  onGround;
+}
+
+pick DirectionUpdate : Player {
+  directionX;
+  directionY;
+  directionZ;
+  magnitude;
+}
+
+pick NameChange : Player {
+  username;
+}
+
+union PlayerUpdate = PositionUpdate | DirectionUpdate | NameChange;
+```
+
+`pick` with `union` simplifies handling specific types of updates when updating groups of properties together. Nested pick is undefined behavior and probably won't work.
 
 #### TypeScript enums
 
@@ -77,6 +143,11 @@ enum BagelFlavors {
 
 This also deserializes enum values as integers instead of strings. This is mostly a personal preference, but its probably also faster to store SMIs instead of strings in memory.
 
+There are two dangers this poses:
+
+- If you pass it `"BagelFlavors.cheese"` it will become `1`
+- If you change existing enum values, it will break.
+
 #### Fixed-length numbers
 
 Kiwi already supports variable-length encoded numbers, but there are cases where you might want to try using fixed-length numbers instead for encode/decode performance reasons.
@@ -111,9 +182,9 @@ type Allocator = {
 }
 ```
 
-When Kiwi is decoding a struct or message, instead of creating a new object each time, it will call `Allocator[typeName].alloc()`.
+#### All encode functions require a ByteBuffer passed in
 
-This is a way to reduce garbage collection pressure. I'm not sure yet whether I will generate the allocators automatically or not.
+This was optional before. Its a worse developer experience this way, but typically better performance to minimize arguments of different types.
 
 #### SharedArrayBuffer
 
@@ -123,7 +194,19 @@ If `SharedArrayBuffer` is available, it will use that instead of `ArrayBuffer`. 
 
 If you want to reduce tne number of times the ArrayBuffer is reallocated by over-allocating, you can set a number to multiply the amount it grows by. I haven't benchmarked if this makes it faster yet but it probably would (at a cost of more memory)
 
----
+#### Required flag inside messages
+
+If you set a property of a message like this:
+
+```
+message Foo {
+  bacon = 1 [!];
+}
+```
+
+The generated type for that property will no longer be optional. This currently has no runtime effect. Its just so the types are easier to work with.
+
+Note: non-JS/TS languages are unsupported but maybe that will change in the future.
 
 # Original readme
 

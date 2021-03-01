@@ -15,12 +15,13 @@ export let nativeTypes = [
   "float32",
   "string",
   "uint",
+  "discriminator",
 ];
 
 // These are special names on the object returned by compileSchema()
 export let reservedNames = ["ByteBuffer", "package", "Allocator"];
 
-let regex = /((?:-|\b)\d+\b|[=;{}]|\[\]|\[deprecated\]|\[!\]|\b[A-Za-z_][A-Za-z0-9_]*\b|\&|\||\/\/.*|\s+)/g;
+let regex = /((?:-|\b)\d+\b|[=\:;{}]|\[\]|\[deprecated\]|\[!\]|\b[A-Za-z_][A-Za-z0-9_]*\b|\&|\||\/\/.*|\s+)/g;
 let identifier = /^[A-Za-z_][A-Za-z0-9_]*$/;
 let whitespace = /^\/\/.*|\s+$/;
 let equals = /^=$/;
@@ -31,7 +32,10 @@ let leftBrace = /^\{$/;
 let rightBrace = /^\}$/;
 let arrayToken = /^\[\]$/;
 let enumKeyword = /^enum$/;
+let smolKeyword = /^smol$/;
+let colon = /^:$/;
 let packageKeyword = /^package$/;
+let pick = /^pick$/;
 let entityKeyword = /^entity$/;
 let structKeyword = /^struct$/;
 let unionKeyword = /^union$/;
@@ -40,6 +44,12 @@ let deprecatedToken = /^\[deprecated\]$/;
 let unionOrToken = /^\|$/;
 let extendsToken = /^&$/;
 let requiredToken = /^\[!\]$/;
+
+interface Pick {
+  from: Token;
+  to: Token;
+  fieldNames: string[];
+}
 
 interface Token {
   text: string;
@@ -121,6 +131,7 @@ function parse(tokens: Token[]): Schema {
   let definitions: Definition[] = [];
   let packageText = null;
   let index = 0;
+  let picks: { [key: string]: Pick } = {};
 
   if (eat(packageKeyword)) {
     packageText = current().text;
@@ -133,6 +144,8 @@ function parse(tokens: Token[]): Schema {
     let kind: DefinitionKind;
 
     if (eat(enumKeyword)) kind = "ENUM";
+    else if (eat(smolKeyword)) kind = "SMOL";
+    else if (eat(pick)) kind = "PICK";
     else if (eat(structKeyword)) kind = "STRUCT";
     else if (eat(messageKeyword)) kind = "MESSAGE";
     else if (eat(entityKeyword)) kind = "ENTITY";
@@ -143,7 +156,33 @@ function parse(tokens: Token[]): Schema {
     let name = current();
     expect(identifier, "identifier");
 
-    if (kind === "UNION") {
+    if (kind === "PICK") {
+      expect(colon, '":"');
+      let field = current();
+      expect(identifier, "identifier");
+
+      expect(leftBrace, '"{"');
+
+      const fieldNames: string[] = [];
+
+      picks[name.text] = {
+        to: name,
+        fieldNames,
+        from: field,
+      };
+
+      while (!eat(rightBrace)) {
+        field = current();
+        expect(identifier, "identifier");
+        if (fieldNames.includes(field.text)) {
+          error("Fields must be unique", field.line, field.column);
+        }
+        fieldNames.push(field.text);
+        expect(semicolon, ";");
+      }
+
+      continue;
+    } else if (kind === "UNION") {
       expect(equals, '"="');
 
       let field = current();
@@ -176,7 +215,24 @@ function parse(tokens: Token[]): Schema {
         });
       }
 
-      expect(semicolon, '";"');
+      if (eat(leftBrace)) {
+        field = current();
+        expect(identifier, "discriminator name");
+        fields.unshift({
+          type: "discriminator",
+          name: field.text,
+          line: field.line,
+          column: field.column,
+          isArray: false,
+          isDeprecated: false,
+          isRequired: true,
+          value: 0,
+        });
+        expect(semicolon, ";");
+        expect(rightBrace, "}");
+      } else {
+        expect(semicolon, '";"');
+      }
     } else {
       expect(leftBrace, '"{"');
 
@@ -187,7 +243,7 @@ function parse(tokens: Token[]): Schema {
         let isDeprecated = false;
 
         // Enums don't have types
-        if (kind !== "ENUM") {
+        if (kind !== "ENUM" && kind !== "SMOL") {
           type = current().text;
           expect(identifier, "identifier");
           isArray = eat(arrayToken);
@@ -254,6 +310,70 @@ function parse(tokens: Token[]): Schema {
     });
   }
 
+  let foundMatch = false;
+  for (let partName in picks) {
+    const pick = picks[partName];
+    const token = pick.from;
+    let definition: Definition = definitions[0];
+
+    for (let i = 0; i < definitions.length; i++) {
+      definition = definitions[i];
+
+      if (definition.name === token.text) {
+        foundMatch = true;
+        break;
+      }
+    }
+
+    if (!foundMatch) {
+      error("Expected type for part to exist", token.line, token.column);
+    }
+
+    foundMatch = false;
+
+    const fields = new Array<Field>(pick.fieldNames.length);
+    let field = definition.fields[0];
+    for (let i = 0; i < fields.length; i++) {
+      let name = pick.fieldNames[i];
+      foundMatch = false;
+      field = definition.fields[0];
+
+      for (let j = 0; j < definition.fields.length; j++) {
+        if (definition.fields[j].name === name) {
+          field = definition.fields[j];
+          foundMatch = true;
+        }
+      }
+
+      if (!foundMatch) {
+        error(
+          `Expected field ${name} to exist in ${definition.name}`,
+          token.line,
+          token.column
+        );
+      }
+
+      fields[i] = {
+        name: field.name,
+        line: field.line,
+        column: field.column,
+        type: field.type,
+        isRequired: true,
+        isArray: field.isArray,
+        isDeprecated: field.isDeprecated,
+        value: i + 1,
+      };
+    }
+
+    definitions.push({
+      name: pick.to.text,
+      line: token.line,
+      column: token.column,
+      kind: "STRUCT",
+      fields,
+    });
+  }
+
   return {
     package: packageText,
     definitions: definitions,
@@ -290,7 +410,11 @@ function verify(root: Schema): void {
     let definition = root.definitions[i];
     let fields = definition.fields;
 
-    if (definition.kind === "ENUM" || fields.length === 0) {
+    if (
+      definition.kind === "ENUM" ||
+      definition.kind === "SMOL" ||
+      fields.length === 0
+    ) {
       continue;
     }
 
@@ -337,6 +461,14 @@ function verify(root: Schema): void {
             field.column
           );
         }
+
+        if (field.type === "discriminator") {
+          error(
+            "discriminator is only available inside of unions.",
+            field.line,
+            field.column
+          );
+        }
       }
     }
 
@@ -351,7 +483,7 @@ function verify(root: Schema): void {
           field.column
         );
       }
-      if (field.value <= 0) {
+      if (field.value <= 0 && field.type !== "discriminator") {
         error(
           "The id for field " + quote(field.name) + " must be positive",
           field.line,

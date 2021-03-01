@@ -16,7 +16,7 @@ let types: (string | null)[] = [
   "string",
   "uint",
 ];
-let kinds: DefinitionKind[] = ["ENUM", "STRUCT", "MESSAGE", "UNION"];
+let kinds: DefinitionKind[] = ["ENUM", "STRUCT", "MESSAGE", "UNION", "SMOL"];
 
 export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
   let bb = buffer instanceof ByteBuffer ? buffer : new ByteBuffer(buffer);
@@ -41,7 +41,10 @@ export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
         name: fieldName,
         line: 0,
         column: 0,
-        type: kinds[kind] === "ENUM" ? null : (type as any),
+        type:
+          kinds[kind] === "ENUM" || kinds[kind] === "SMOL"
+            ? null
+            : (type as any),
         isArray: isArray,
         isRequired,
         isDeprecated: false,
@@ -78,7 +81,6 @@ export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
       }
     }
   }
-  console.log(definitions);
   return {
     package: null,
     definitions: definitions,

@@ -1,9 +1,11 @@
 import { Schema } from "./schema";
 import { error, quote } from "./util";
 
+const KIWI_IMPORT_PATH = "peechy";
+
 export function compileSchemaTypeScript(schema: Schema): string {
   var indent = "";
-  var lines = [];
+  var lines = [`import type {ByteBuffer} from "${KIWI_IMPORT_PATH}";\n`];
 
   if (schema.package !== null) {
     lines.push("export namespace " + schema.package + " {");
@@ -22,6 +24,11 @@ export function compileSchemaTypeScript(schema: Schema): string {
   lines.push(`type uint32 = number;`);
 
   var unionsByName: { [key: string]: number } = {};
+  var discriminatedTypes: {
+    [key: string]: {
+      [name: string]: string;
+    };
+  } = {};
 
   for (var i = 0; i < schema.definitions.length; i++) {
     var definition = schema.definitions[i];
@@ -31,16 +38,35 @@ export function compileSchemaTypeScript(schema: Schema): string {
 
       lines.push(indent + "export enum " + definition.name + "Type {");
 
-      for (var j = 0; j < definition.fields.length; j++) {
+      const descriminator = definition.fields[0];
+      for (var j = 0; j < definition.fields.length; ) {
+        const field = definition.fields[j];
+
+        if (descriminator.type === "discriminator") {
+          if (j === 0) {
+            j++;
+            continue;
+          }
+          if (!discriminatedTypes[field.name!]) {
+            discriminatedTypes[field.type!] = {
+              [descriminator.name]: definition.name + "Type" + "." + field.name,
+            };
+          } else {
+            discriminatedTypes[field.type!][descriminator.name] =
+              definition.name + "Type." + field.name;
+          }
+        }
+
         lines.push(
           indent +
             indent +
             "" +
-            definition.fields[j].name +
+            field.name +
             " = " +
-            definition.fields[j].value +
+            field.value +
             (j < definition.fields.length - 1 ? "," : "")
         );
+        j++;
       }
 
       lines.push(indent + "}");
@@ -73,13 +99,18 @@ export function compileSchemaTypeScript(schema: Schema): string {
     var definition = schema.definitions[i];
 
     const unionFields: { [property: string]: number } = {};
-    let hasUnionFields = false;
+    let unionFieldsCount = 0;
     for (var j = 0; j < definition.fields.length; j++) {
       var field = definition.fields[j];
 
-      if (field.type && unionsByName[field.type]) {
+      if (
+        field.type &&
+        unionsByName[field.type] &&
+        (!discriminatedTypes[definition.name] ||
+          !discriminatedTypes[definition.name][field.name])
+      ) {
         unionFields[field.type] = j;
-        hasUnionFields = true;
+        unionFieldsCount++;
       }
     }
 
@@ -88,12 +119,37 @@ export function compileSchemaTypeScript(schema: Schema): string {
       definition.kind === "MESSAGE" ||
       definition.kind === "UNION"
     ) {
+      let line: string;
       if (definition.kind === "UNION") {
-        lines.push(indent + "export type " + definition.name + " =");
-      } else if (hasUnionFields) {
-        lines.push(indent + "interface Abstract" + definition.name + " {");
+        line = indent + "export type " + definition.name + " =";
+      } else if (unionFieldsCount) {
+        line = indent + "interface Abstract" + definition.name;
       } else {
-        lines.push(indent + "export interface " + definition.name + " {");
+        line = indent + "export interface " + definition.name;
+      }
+
+      const discriminators = discriminatedTypes[definition.name];
+      if (discriminators) {
+        let index = 0;
+        const discriminatorNames = [];
+        for (let discriminator in discriminators) {
+          discriminatorNames.push(
+            "U" +
+              index++ +
+              ` extends (${discriminators[discriminator]} | undefined) = undefined`
+          );
+        }
+        line += "<" + discriminatorNames.join(" , ") + "> {";
+        lines.push(line);
+        index = 0;
+        for (let discriminator in discriminators) {
+          lines.push(indent + indent + `${discriminator}: U${index++};`);
+        }
+      } else if (definition.kind !== "UNION") {
+        line += " {";
+        lines.push(line);
+      } else {
+        lines.push(line);
       }
 
       for (var j = 0; j < definition.fields.length; j++) {
@@ -140,8 +196,25 @@ export function compileSchemaTypeScript(schema: Schema): string {
         else if (field.isArray) type += "[]";
 
         if (definition.kind === "UNION") {
-          lines.push(indent + field.name + "|");
-        } else if (field.type && typeof unionFields[field.type] === "number") {
+          if (field.type !== "discriminator") {
+            if (discriminatedTypes[field.type!]) {
+              lines.push(
+                indent +
+                  indent +
+                  "|" +
+                  indent +
+                  field.name +
+                  "<" +
+                  definition.name +
+                  "Type" +
+                  "." +
+                  field.name +
+                  "> "
+              );
+            } else {
+              lines.push(indent + indent + "|" + indent + field.name);
+            }
+          }
         } else {
           lines.push(
             indent +
@@ -155,21 +228,61 @@ export function compileSchemaTypeScript(schema: Schema): string {
         }
       }
 
-      if (definition.kind === "UNION") {
+      if (definition.kind === "UNION" && !discriminatedTypes[definition.name]) {
         lines[lines.length - 1] =
-          lines[lines.length - 1].substring(
-            0,
-            lines[lines.length - 1].length - 1
-          ) + ";";
+          lines[lines.length - 1].substring(0, lines[lines.length - 1].length) +
+          ";";
+      } else if (definition.kind === "UNION") {
+        lines[lines.length - 1] += ";";
       } else {
         lines.push(indent + "}");
         lines.push("");
       }
 
-      if (hasUnionFields) {
+      if (unionFieldsCount) {
+        const unionTypeNames = [];
         for (let type in unionFields) {
           const fieldId = unionFields[type];
           const field = definition.fields[fieldId];
+          const union =
+            field.type && schema.definitions[unionsByName[field.type]];
+          if (union) {
+            const group = [];
+            for (let value of union.fields) {
+              if (value.type === "discriminator") break;
+
+              const unionTypeName = `${definition.name}${value.name}Discriminator`;
+              group.push(unionTypeName);
+              if (value.type) {
+                const discriminator = `${union.name}Type.${value.type}`;
+                lines.push(
+                  `type ${unionTypeName} = { ${field.name}Type${
+                    field.isRequired ? "" : "?"
+                  }: ${discriminator}; ${field.name}${
+                    field.isRequired ? "" : "?"
+                  }: ${value.type}; }`
+                );
+              }
+            }
+
+            if (group.length) unionTypeNames.push(group);
+          }
+        }
+        const unionTypeString = unionTypeNames
+          .map((group) =>
+            group.length > 0 ? "( " + group.join(" | ") + " )" : ""
+          )
+          .filter((a) => a.trim().length > 0)
+          .join(" & ");
+
+        if (unionTypeString.length) {
+          lines.push(
+            `export type ${definition.name} = Abstract${definition.name} & ${unionTypeString};`
+          );
+        } else {
+          lines.push(
+            `export interface ${definition.name} extends Abstract${definition.name} {};`
+          );
         }
       }
     } else if (definition.kind !== "ENUM") {
@@ -185,32 +298,60 @@ export function compileSchemaTypeScript(schema: Schema): string {
 
   for (var i = 0; i < schema.definitions.length; i++) {
     var definition = schema.definitions[i];
-
     if (definition.kind === "ENUM") {
-      lines.push(indent + "  " + definition.name + ": any;");
+      lines.push(indent + "  " + definition.name + `: ${definition.name};`);
     } else if (
       definition.kind === "STRUCT" ||
       definition.kind === "MESSAGE" ||
       definition.kind === "UNION"
     ) {
-      lines.push(
-        indent +
-          "  encode" +
-          definition.name +
-          "(message: " +
-          definition.name +
-          "): Uint8Array;"
-      );
+      if (definition.kind === "UNION") {
+        lines.push(
+          indent + "  " + definition.name + `: ${definition.name}Type;`
+        );
+
+        if (definition.fields[0].type !== "discriminator") {
+          lines.push(
+            indent +
+              "  encode" +
+              definition.name +
+              "(message: " +
+              definition.name +
+              `, bb: ByteBuffer, type: ${definition.name}Type): void;`
+          );
+        } else {
+          lines.push(
+            indent +
+              "  encode" +
+              definition.name +
+              "(message: " +
+              definition.name +
+              ", bb: ByteBuffer): void;"
+          );
+        }
+      } else {
+        lines.push(
+          indent +
+            "  encode" +
+            definition.name +
+            "(message: " +
+            definition.name +
+            ", bb: ByteBuffer): void;"
+        );
+      }
+
       lines.push(
         indent +
           "  decode" +
           definition.name +
-          "(buffer: Uint8Array): " +
+          "(buffer: ByteBuffer): " +
           definition.name +
           ";"
       );
     }
   }
+
+  lines.push(indent + indent + "ByteBuffer: ByteBuffer;");
 
   lines.push(indent + "}");
 
