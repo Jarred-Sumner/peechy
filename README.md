@@ -1,6 +1,6 @@
 # Peechy Message Format
 
-This is fork of evanw's excellent [Kiwi Message Format](https://github.com/evanw/kiwi).
+This is fork of evanw's excellent [Kiwi Message Format](https://github.com/evanw/kiwi). evanw did essentially all the work and deserves the credit. I made some incompatible changes for my own usecase.
 
 ## Installation
 

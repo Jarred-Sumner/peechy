@@ -3,3 +3,4 @@ rust/target/
 js/*.js
 js/*.d.ts
 js/.npmignore
+*.tgz
