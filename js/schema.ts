@@ -18,6 +18,7 @@ export interface Definition {
   column: number;
   kind: DefinitionKind;
   fields: Field[];
+  extensions?: string[];
 }
 
 export interface Field {

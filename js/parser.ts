@@ -141,6 +141,7 @@ function parse(tokens: Token[]): Schema {
 
   while (index < tokens.length && !eat(endOfFile)) {
     let fields: Field[] = [];
+    let extensions: string[];
     let kind: DefinitionKind;
 
     if (eat(enumKeyword)) kind = "ENUM";
@@ -234,6 +235,18 @@ function parse(tokens: Token[]): Schema {
         expect(semicolon, '";"');
       }
     } else {
+      if (kind === "STRUCT") {
+        while (eat(extendsToken)) {
+          let field = current();
+          expect(identifier, "discriminator name");
+          if (!extensions) {
+            extensions = [field.text];
+          } else {
+            extensions.push(field.text);
+          }
+        }
+      }
+
       expect(leftBrace, '"{"');
 
       // Parse fields
@@ -307,7 +320,43 @@ function parse(tokens: Token[]): Schema {
       column: name.column,
       kind: kind,
       fields: fields,
+      extensions,
     });
+  }
+
+  // This can definitely be made faster
+  // but not gonna bother unless it shows up in some profiling at some point
+  for (let definition of definitions) {
+    if (definition.extensions) {
+      for (let extension of definition.extensions) {
+        let otherDefinition = definition;
+        for (let i = 0; i < definitions.length; i++) {
+          otherDefinition = definitions[i];
+          if (extension === otherDefinition.name) {
+            break;
+          }
+        }
+
+        if (
+          otherDefinition.name !== extension ||
+          otherDefinition.kind !== "STRUCT"
+        ) {
+          error(
+            `Expected ${otherDefinition.name} to to be a struct`,
+            definition.line,
+            definition.column
+          );
+        }
+
+        let offset = definition.fields.length;
+        for (let field of otherDefinition.fields) {
+          definition.fields.push({
+            ...field,
+            value: field.value + offset,
+          });
+        }
+      }
+    }
   }
 
   let foundMatch = false;

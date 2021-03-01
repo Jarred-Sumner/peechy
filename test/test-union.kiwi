@@ -187,3 +187,18 @@ pick NameChange : Player {
 
 union PlayerUpdate = PositionUpdate | DirectionUpdate | NameChange;
 
+struct Position {
+  float x;
+  float y;
+  float z;
+}
+
+struct Rotation {
+  float heading;
+  float pitch;
+}
+
+
+struct PositionPlusRotation & Rotation & Position {
+
+}
