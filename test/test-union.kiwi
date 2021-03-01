@@ -203,8 +203,6 @@ struct Rotation {
   float pitch;
 }
 
-
-
 struct PositionPlusRotation & Rotation & Position {
 
 }

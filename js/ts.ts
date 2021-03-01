@@ -30,6 +30,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
     };
   } = {};
 
+  var aliases: { [key: string]: string } = {};
   for (var i = 0; i < schema.definitions.length; i++) {
     var definition = schema.definitions[i];
 
@@ -101,9 +102,9 @@ export function compileSchemaTypeScript(schema: Schema): string {
       );
     }
   }
-
   for (var i = 0; i < schema.definitions.length; i++) {
     var definition = schema.definitions[i];
+    if (definition.kind === "ALIAS") continue;
 
     const unionFields: { [property: string]: number } = {};
     let unionFieldsCount = 0;

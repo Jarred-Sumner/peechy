@@ -1,4 +1,4 @@
-import { Schema, Definition } from "./schema";
+import { Schema, Definition, Field } from "./schema";
 import { ByteBuffer } from "./bb";
 import { error, quote } from "./util";
 import { parseSchema } from "./parser";
@@ -85,9 +85,10 @@ function compileDecode(
     for (let i = 0; i < definition.fields.length; i++) {
       let field = definition.fields[i];
       let code: string;
-      if (aliases[field.type]) field.type = aliases[field.type];
+      let fieldType = field.type;
+      if (aliases[fieldType]) fieldType = aliases[fieldType];
 
-      switch (field.type) {
+      switch (fieldType) {
         case "bool": {
           code = "!!bb.readByte()";
           break;
@@ -150,11 +151,11 @@ function compileDecode(
         }
 
         default: {
-          let type = definitions[field.type!];
+          let type = definitions[fieldType!];
           if (!type) {
             error(
               "Invalid type " +
-                quote(field.type!) +
+                quote(fieldType!) +
                 " for field " +
                 quote(field.name),
               field.line,
@@ -176,14 +177,14 @@ function compileDecode(
 
       if (field.isArray) {
         if (field.isDeprecated) {
-          if (field.type === "byte") {
+          if (fieldType === "byte") {
             lines.push(indent + "bb.readByteArray();");
           } else {
             lines.push(indent + "var length = bb.readVarUint();");
             lines.push(indent + "while (length-- > 0) " + code + ";");
           }
         } else {
-          switch (field.type) {
+          switch (fieldType) {
             case "byte": {
               lines.push(
                 indent +
@@ -265,18 +266,18 @@ function compileDecode(
             }
           }
         }
-      } else if (field.type && isDiscriminatedUnion(field.type, definitions)) {
+      } else if (fieldType && isDiscriminatedUnion(fieldType, definitions)) {
         lines.push(
           indent +
             "result[" +
             quote(field.name) +
             "] = " +
-            `this[${quote("decode" + field.type)}](bb);`
+            `this[${quote("decode" + fieldType)}](bb);`
         );
       } else if (
-        field.type &&
-        definitions[field.type] &&
-        definitions[field.type].kind === "UNION"
+        fieldType &&
+        definitions[fieldType] &&
+        definitions[fieldType].kind === "UNION"
       ) {
         const key = quote(field.name + "Type");
         lines.push(
@@ -285,7 +286,7 @@ function compileDecode(
             "result[" +
             quote(field.name) +
             "] = " +
-            `this[${quote("decode" + field.type)}](bb, result[${key}]);`
+            `this[${quote("decode" + fieldType)}](bb, result[${key}]);`
         );
       } else {
         if (field.isDeprecated) {
@@ -402,9 +403,10 @@ function compileEncode(
       continue;
     }
 
-    if (aliases[field.type]) field.type = aliases[field.type];
+    let fieldType = field.type;
+    if (aliases[fieldType]) fieldType = aliases[fieldType];
 
-    switch (field.type) {
+    switch (fieldType) {
       case "bool": {
         code = "bb.writeByte(value);";
         break;
@@ -476,11 +478,11 @@ function compileEncode(
       }
 
       default: {
-        let type = definitions[field.type!];
+        let type = definitions[fieldType!];
         if (!type) {
           throw new Error(
             "Invalid type " +
-              quote(field.type!) +
+              quote(fieldType!) +
               " for field " +
               quote(field.name)
           );
@@ -527,7 +529,7 @@ function compileEncode(
 
     lines.push("");
 
-    if (field.type === "discriminator") {
+    if (fieldType === "discriminator") {
       error("Unexpected discriminator", field.line, field.column);
     } else {
       lines.push("  var value = message[" + quote(field.name) + "];");
@@ -540,7 +542,7 @@ function compileEncode(
 
     if (field.isArray) {
       let indent = "   ";
-      switch (field.type) {
+      switch (fieldType) {
         case "byte": {
           lines.push(indent + "bb.writeByteArray(value);");
           break;
@@ -664,13 +666,14 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
         encoders.fill("() => null");
         for (let j = 0; j < definition.fields.length; j++) {
           let field = definition.fields[j];
+          let fieldType = field.type;
           if (field.value > 0) {
             if (aliases[field.name]) field.name = aliases[field.name];
             value[field.name] = field.value;
             value[field.value] = field.value;
 
             encoders[field.value] =
-              name + "[" + quote("encode" + field.type) + "]";
+              name + "[" + quote("encode" + fieldType) + "]";
           }
         }
         js.push(

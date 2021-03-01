@@ -258,7 +258,7 @@ function parse(tokens: Token[]): Schema {
       let field = current();
       expect(identifier, "identifier");
       fields.push({
-        type: "type",
+        type: field.text,
         name: field.text,
         line: field.line,
         column: field.column,
@@ -536,12 +536,6 @@ function verify(root: Schema): void {
       if (!field)
         error("Expected alias name", definition.line, definition.column);
 
-      if (field.type !== "type")
-        error(
-          "Expected field type to be defined",
-          definition.line,
-          definition.column
-        );
       if (!(definitions[field.name] || nativeTypeMap[field.name])) {
         error(
           "Expected type used in alias to exist.",
