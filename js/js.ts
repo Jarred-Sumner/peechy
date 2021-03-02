@@ -15,6 +15,7 @@ function isDiscriminatedUnion(
 type AliasMap = { [name: string]: string };
 
 function compileDecode(
+  functionName: string,
   definition: Definition,
   definitions: { [name: string]: Definition },
   withAllocator: boolean = false,
@@ -26,9 +27,9 @@ function compileDecode(
   if (definition.kind === "UNION") {
     const hasDiscriminator = isDiscriminatedUnion(definition.name, definitions);
     if (hasDiscriminator) {
-      lines.push("function(bb) {");
+      lines.push(`function ${functionName}(bb) {`);
     } else {
-      lines.push("function(bb, type = 0) {");
+      lines.push(`function ${functionName}(bb, type = 0) {`);
     }
 
     lines.push("");
@@ -40,10 +41,7 @@ function compileDecode(
         let field = definition.fields[i];
         lines.push(
           `    case ${field.value}:`,
-          indent +
-            "var result = this[" +
-            quote("decode" + field.name) +
-            "](bb);",
+          indent + "var result = " + ("decode" + field.name) + "(bb);",
           indent +
             `result[${quote(definition.fields[0].name)}] = ${field.value};`,
           indent + `return result;`
@@ -56,18 +54,18 @@ function compileDecode(
         let field = definition.fields[i];
         lines.push(
           `    case ${field.value}:`,
-          indent + "return this[" + quote("decode" + field.name) + "](bb);"
+          indent + `return ${"decode" + field.name}(bb)`
         );
       }
     }
   } else {
+    lines.push(`function ${functionName}(bb) {`);
+
     if (!withAllocator) {
-      lines.push("function(bb) {");
       lines.push("  var result = {};");
     } else {
-      lines.push("function(bb) {");
       lines.push(
-        "  var result = this.Allocator[" + quote(definition.name) + "].alloc();"
+        "  var result = Allocator[" + quote(definition.name) + "].alloc();"
       );
     }
 
@@ -162,11 +160,11 @@ function compileDecode(
               field.column
             );
           } else if (type.kind === "ENUM") {
-            code = "this[" + quote(type.name) + "][bb.readVarUint()]";
+            code = type.name + "[bb.readVarUint()]";
           } else if (type.kind === "SMOL") {
-            code = "this[" + quote(type.name) + "][bb.readByte()]";
+            code = type.name + "[bb.readByte()]";
           } else {
-            code = "this[" + quote("decode" + type.name) + "](bb)";
+            code = "decode" + type.name + "(bb)";
           }
         }
       }
@@ -272,7 +270,7 @@ function compileDecode(
             "result[" +
             quote(field.name) +
             "] = " +
-            `this[${quote("decode" + fieldType)}](bb);`
+            `${"decode" + fieldType}(bb);`
         );
       } else if (
         fieldType &&
@@ -286,7 +284,7 @@ function compileDecode(
             "result[" +
             quote(field.name) +
             "] = " +
-            `this[${quote("decode" + fieldType)}](bb, result[${key}]);`
+            `${"decode" + fieldType}(bb, result[${key}]);`
         );
       } else {
         if (field.isDeprecated) {
@@ -324,6 +322,7 @@ function compileDecode(
 }
 
 function compileEncode(
+  functionName: string,
   definition: Definition,
   definitions: { [name: string]: Definition },
   aliases: AliasMap
@@ -334,25 +333,21 @@ function compileEncode(
     const discriminator = definition.fields[0];
     const hasDiscriminator = discriminator.type === "discriminator";
 
-    lines.push("function(message, bb, type = 0) {");
+    lines.push(`function ${functionName}(message, bb, type = 0) {`);
     if (hasDiscriminator) {
       lines.push(
-        `  type = type ? type : this[${quote(definition.name)}][message[${quote(
+        `  type = type ? type : ${definition.name}[message[${quote(
           discriminator.name
         )}]];`
       );
       lines.push(
         `  if (!type) throw new Error('Expected message[${quote(
           discriminator.name
-        )}] to be one of ' + JSON.stringify(this[${quote(
-          definition.name
-        )}]) + ' ');`
+        )}] to be one of ' + JSON.stringify(${definition.name}) + ' ');`
       );
     } else {
       lines.push(
-        `  if (!type) throw new Error('Expected type to be one of ' + JSON.stringify(this[${quote(
-          definition.name
-        )}], null, 2) + ' ');`
+        `  if (!type) throw new Error('Expected type to be one of ' + JSON.stringify(${definition.name}, null, 2) + ' ');`
       );
     }
 
@@ -373,7 +368,7 @@ function compileEncode(
       }
 
       lines.push(`    case ${field.value}: {`);
-      lines.push(`      this[${quote("encode" + field.name)}](message, bb)`);
+      lines.push(`      ${"encode" + field.name}(message, bb)`);
       lines.push(`      break;`);
       lines.push(`    }`);
     }
@@ -381,9 +376,7 @@ function compileEncode(
     lines.push(
       `      throw new Error('Expected message[${quote(
         discriminator.name
-      )}] to be one of ' + JSON.stringify(this[${quote(
-        definition.name
-      )}]) + ' ');`
+      )}] to be one of ' + JSON.stringify(${definition.name}) + ' ');`
     );
     lines.push(`    }`);
 
@@ -392,7 +385,7 @@ function compileEncode(
     lines.push("}");
     return lines.join("\n");
   } else {
-    lines.push("function(message, bb) {");
+    lines.push(`function ${functionName}(message, bb) {`);
   }
 
   for (let j = 0; j < definition.fields.length; j++) {
@@ -488,18 +481,18 @@ function compileEncode(
           );
         } else if (type.kind === "ENUM") {
           code =
-            "var encoded = this[" +
-            quote(type.name) +
-            "][value];\n" +
+            "var encoded = " +
+            type.name +
+            "[value];\n" +
             'if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + ' +
             quote(" for enum " + quote(type.name)) +
             ");\n" +
             "bb.writeVarUint(encoded);";
         } else if (type.kind === "SMOL") {
           code =
-            "var encoded = this[" +
-            quote(type.name) +
-            "][value];\n" +
+            "var encoded = " +
+            type.name +
+            "[value];\n" +
             'if (encoded === void 0) throw new Error("Invalid value " + JSON.stringify(value) + ' +
             quote(" for enum " + quote(type.name)) +
             ");\n" +
@@ -508,21 +501,21 @@ function compileEncode(
           type.kind === "UNION" &&
           isDiscriminatedUnion(type.name, definitions)
         ) {
-          code = "this[" + quote("encode" + type.name) + "](value, bb);";
+          code = "" + ("encode" + type.name) + "(value, bb);";
         } else if (type.kind === "UNION") {
           code =
-            "var encoded = this[" +
-            quote(type.name) +
-            `][${quote(field.name + "Type")}];\n` +
+            "var encoded = " +
+            type.name +
+            `[${quote(field.name + "Type")}];\n` +
             `    if (encoded === void 0) throw new Error('Expected ${quote(
               field.name + "Type"
             )} to be one of ' + JSON.stringify(value) + ' for enum ${quote(
               type.name
             )}');
               bb.writeVarUint(encoded);`;
-          code += "this[" + quote("encode" + type.name) + "](value, bb);";
+          code += "" + ("encode" + type.name) + "(value, bb);";
         } else {
-          code = "this[" + quote("encode" + type.name) + "](value, bb);";
+          code = "" + ("encode" + type.name) + "(value, bb);";
         }
       }
     }
@@ -607,25 +600,27 @@ function compileEncode(
   return lines.join("\n");
 }
 
-export function compileSchemaJS(schema: Schema, withAllocator = false): string {
+export function compileSchemaJS(
+  schema: Schema,
+  isESM: boolean = false,
+  withAllocator = false
+): string {
   let definitions: { [name: string]: Definition } = {};
   let aliases: { [name: string]: string } = {};
   let name = schema.package;
   let js: string[] = [];
+  const exportsList = [];
 
-  if (name !== null) {
-    js.push("var " + name + " = exports || " + name + " || {}, exports;");
-  } else {
-    js.push("var exports = exports || {};");
+  if (isESM) {
     name = "exports";
+  } else {
+    if (name !== null) {
+      js.push("var " + name + " = exports || " + name + " || {}, exports;");
+    } else {
+      js.push("var exports = exports || {};");
+      name = "exports";
+    }
   }
-
-  js.push(
-    name +
-      ".ByteBuffer = " +
-      name +
-      '.ByteBuffer || require("peechy").ByteBuffer;'
-  );
 
   for (let i = 0; i < schema.definitions.length; i++) {
     let definition = schema.definitions[i];
@@ -649,11 +644,11 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
           value[field.name] = field.value;
           value[field.value] = field.value;
         }
+        exportsList.push(definition.name);
         js.push(
-          name +
-            "[" +
-            quote(definition.name) +
-            "] = " +
+          "const " +
+            definition.name +
+            " = " +
             JSON.stringify(value, null, 2) +
             ";"
         );
@@ -672,24 +667,22 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
             value[field.name] = field.value;
             value[field.value] = field.value;
 
-            encoders[field.value] =
-              name + "[" + quote("encode" + fieldType) + "]";
+            encoders[field.value] = "encode" + fieldType;
           }
         }
+        exportsList.push(definition.name);
         js.push(
-          name +
-            "[" +
-            quote(definition.name) +
-            "] = " +
+          "const " +
+            definition.name +
+            " = " +
             JSON.stringify(value, null, 2) +
             ";"
         );
         const encoderName = encoders.join(" , ");
         js.push(
-          name +
-            "[" +
-            quote("encode" + definition.name + "ByType") +
-            "]" +
+          "const encode" +
+            definition.name +
+            "ByType" +
             " = (function() { return " +
             "[" +
             encoderName +
@@ -698,23 +691,28 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
       }
       case "STRUCT":
       case "MESSAGE": {
-        js.push("");
-        js.push(
-          name +
-            "[" +
-            quote("decode" + definition.name) +
-            "] = " +
-            compileDecode(definition, definitions, withAllocator, aliases) +
-            ";"
+        exportsList.push(
+          "decode" + definition.name,
+          "encode" + definition.name
         );
         js.push("");
         js.push(
-          name +
-            "[" +
-            quote("encode" + definition.name) +
-            "] = " +
-            compileEncode(definition, definitions, aliases) +
-            ";"
+          compileDecode(
+            "decode" + definition.name,
+            definition,
+            definitions,
+            withAllocator,
+            aliases
+          )
+        );
+        js.push("");
+        js.push(
+          compileEncode(
+            "encode" + definition.name,
+            definition,
+            definitions,
+            aliases
+          )
         );
         break;
       }
@@ -731,6 +729,16 @@ export function compileSchemaJS(schema: Schema, withAllocator = false): string {
   }
 
   js.push("");
+  if (isESM) {
+    for (let exportName of exportsList) {
+      js.push(`export { ${exportName} }`);
+    }
+  } else {
+    for (let exportName of exportsList) {
+      js.push(`exports[${quote(exportName)}] = ${exportName};`);
+    }
+  }
+
   return js.join("\n");
 }
 
@@ -740,7 +748,8 @@ interface IAllocator {
 
 export function compileSchema(
   schema: Schema | string,
-  Allocator?: { [key: string]: IAllocator }
+  useESM: boolean = false,
+  Allocator?: { [key: string]: IAllocator } | string
 ): any {
   let result = Allocator
     ? {
@@ -751,7 +760,15 @@ export function compileSchema(
   if (typeof schema === "string") {
     schema = parseSchema(schema);
   }
-  const out = compileSchemaJS(schema, !!Allocator);
-  new Function("exports", out)(result);
-  return result;
+  let out = compileSchemaJS(schema, useESM, !!Allocator);
+  if (useESM) {
+    if (Allocator) {
+      out = `import * as Allocator from "${Allocator as string}";\n\n${out}`;
+    }
+
+    return out;
+  } else {
+    new Function("exports", out)(result);
+    return result;
+  }
 }

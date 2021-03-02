@@ -22,7 +22,8 @@ let usage = [
   "  --help                Print this message.",
   "  --schema [PATH]       The schema file to use.",
   "  --js [PATH]           Generate JavaScript code.",
-  "  --js-allocator        Allow passing an allocator.",
+  "  --esm [PATH]          Generate JavaScript code as a ECMAScript module.",
+  "  --js-allocator [PATH] Allow passing an allocator to import in the code.",
   "  --ts [PATH]           Generate TypeScript type definitions.",
   "  --text [PATH]         Encode the schema as text.",
   "  --binary [PATH]       Encode the schema as a binary blob.",
@@ -61,6 +62,7 @@ export function main(args: string[]): number {
   let flags: { [flag: string]: string | null } = {
     "--schema": null,
     "--js": null,
+    "--esm": null,
     "--ts": null,
     "--cpp": null,
     "--callback-cpp": null,
@@ -152,6 +154,13 @@ export function main(args: string[]): number {
       flags["--js"],
       compileSchemaJS(parsed, !!flags["--js-allocator"])
     );
+  }
+
+  // Generate JavaScript code
+  if (flags["--esm"] !== null) {
+    const withAllocator = flags["--js-allocator"];
+
+    writeFileString(flags["--esm"], compileSchema(parsed, true, withAllocator));
   }
 
   // Generate JavaScript code

@@ -30,7 +30,6 @@ export function compileSchemaTypeScript(schema: Schema): string {
     };
   } = {};
 
-  var aliases: { [key: string]: string } = {};
   for (var i = 0; i < schema.definitions.length; i++) {
     var definition = schema.definitions[i];
 
@@ -355,26 +354,24 @@ export function compileSchemaTypeScript(schema: Schema): string {
     }
   }
 
-  lines.push(indent + "export interface Schema {");
-
   for (var i = 0; i < schema.definitions.length; i++) {
     var definition = schema.definitions[i];
     if (definition.kind === "ENUM") {
-      lines.push(indent + "  " + definition.name + `: ${definition.name};`);
+      // lines.push(indent + "  " + definition.name + `: ${definition.name};`);
     } else if (
       definition.kind === "STRUCT" ||
       definition.kind === "MESSAGE" ||
       definition.kind === "UNION"
     ) {
       if (definition.kind === "UNION") {
-        lines.push(
-          indent + "  " + definition.name + `: ${definition.name}Type;`
-        );
+        // lines.push(
+        //   indent + "  " + definition.name + `: ${definition.name}Type;`
+        // );
 
         if (definition.fields[0].type !== "discriminator") {
           lines.push(
             indent +
-              "  encode" +
+              "export declare function  encode" +
               definition.name +
               "(message: " +
               definition.name +
@@ -383,7 +380,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
         } else {
           lines.push(
             indent +
-              "  encode" +
+              "export declare function  encode" +
               definition.name +
               "(message: " +
               definition.name +
@@ -393,7 +390,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
       } else {
         lines.push(
           indent +
-            "  encode" +
+            "export declare function  encode" +
             definition.name +
             "(message: " +
             definition.name +
@@ -403,7 +400,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
 
       lines.push(
         indent +
-          "  decode" +
+          "export declare function decode" +
           definition.name +
           "(buffer: ByteBuffer): " +
           definition.name +
@@ -412,9 +409,9 @@ export function compileSchemaTypeScript(schema: Schema): string {
     }
   }
 
-  lines.push(indent + indent + "ByteBuffer: ByteBuffer;");
+  // lines.push(indent + indent + "ByteBuffer: ByteBuffer;");
 
-  lines.push(indent + "}");
+  // lines.push(indent + "}");
 
   if (schema.package !== null) {
     lines.push("}");
