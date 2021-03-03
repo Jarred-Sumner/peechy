@@ -678,6 +678,8 @@ export function compileSchemaJS(
             JSON.stringify(value, null, 2) +
             ";"
         );
+        js.push("const " + definition.name + "Type = " + definition.name + ";");
+        exportsList.push(definition.name + "Type");
         const encoderName = encoders.join(" , ");
         js.push(
           "const encode" +
