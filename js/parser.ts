@@ -38,8 +38,9 @@ export let nativeTypeMap = {
 // These are special names on the object returned by compileSchema()
 export let reservedNames = ["ByteBuffer", "package", "Allocator"];
 
-let regex = /((?:-|\b)\d+\b|[=\:;{}]|\[\]|\[deprecated\]|\[!\]|\b[A-Za-z_][A-Za-z0-9_]*\b|\&|\||\/\/.*|\s+)/g;
+let regex = /((?:-|\b)\d+\b|[=\:;{}]|\[\]|\[deprecated\]|\[!\]|\b[A-Za-z_][A-Za-z0-9_]*\b|"|-|\&|\||\/\/.*|\s+)/g;
 let identifier = /^[A-Za-z_][A-Za-z0-9_]*$/;
+let path = /^([-\_\.abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@])*$/;
 let whitespace = /^\/\/.*|\s+$/;
 let equals = /^=$/;
 let endOfFile = /^$/;
@@ -50,6 +51,8 @@ let rightBrace = /^\}$/;
 let arrayToken = /^\[\]$/;
 let enumKeyword = /^enum$/;
 let smolKeyword = /^smol$/;
+let quoteToken = /^"$/;
+let serializerKeyword = /^from$/;
 let colon = /^:$/;
 let packageKeyword = /^package$/;
 let pick = /^pick$/;
@@ -156,6 +159,7 @@ function parse(tokens: Token[]): Schema {
     expect(identifier, "identifier");
     expect(semicolon, '";"');
   }
+  let serializerPath;
 
   while (index < tokens.length && !eat(endOfFile)) {
     let fields: Field[] = [];
@@ -281,6 +285,15 @@ function parse(tokens: Token[]): Schema {
         }
       }
 
+      if (eat(serializerKeyword)) {
+        expect(quoteToken, '"');
+        serializerPath = "";
+        while (!eat(quoteToken)) {
+          serializerPath += current().text;
+          index++;
+        }
+      }
+
       expect(leftBrace, '"{"');
 
       // Parse fields
@@ -355,7 +368,12 @@ function parse(tokens: Token[]): Schema {
       kind: kind,
       fields: fields,
       extensions,
+      serializerPath:
+        serializerPath && serializerPath.trim().length > 0
+          ? serializerPath
+          : undefined,
     });
+    serializerPath = "";
   }
 
   // This can definitely be made faster

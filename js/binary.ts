@@ -59,12 +59,15 @@ export function decodeBinarySchema(buffer: Uint8Array | ByteBuffer): Schema {
       });
     }
 
+    let serializerPath = bb.readString();
+
     definitions.push({
       name: definitionName,
       line: 0,
       column: 0,
       kind: kinds[kind],
       fields: fields,
+      serializerPath: serializerPath,
     });
   }
 
@@ -122,6 +125,8 @@ export function encodeBinarySchema(schema: Schema): Uint8Array {
       bb.writeByte(field.isRequired ? 1 : 0);
       bb.writeVarUint(field.value);
     }
+
+    bb.writeString(definition.serializerPath || "");
   }
 
   return bb.toUint8Array();

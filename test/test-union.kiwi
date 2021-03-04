@@ -191,16 +191,19 @@ alias ID = string;
 
 struct Position {
   ID id;
+}
+
+struct FakeImportStruct from "fake-import-path" {
   float x;
   float y;
   float z;
 }
 
-
-
 struct Rotation {
   float heading;
   float pitch;
+
+  FakeImportStruct imported;
 }
 
 struct PositionPlusRotation & Rotation & Position {

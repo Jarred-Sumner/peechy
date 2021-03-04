@@ -378,7 +378,7 @@ export class ByteBuffer {
     } while (value);
   }
 
-  writeUInt16(value: number): void {
+  writeUint16(value: number): void {
     let index = this.length;
     this._growBy(2);
     // TODO: see if DataView is faster
@@ -387,7 +387,7 @@ export class ByteBuffer {
     this._data[index++] = uint8Buffer[1];
   }
 
-  writeUInt32(value: number): void {
+  writeUint32(value: number): void {
     let index = this.length;
     this._growBy(4);
     uint32[0] = value;

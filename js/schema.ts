@@ -20,6 +20,7 @@ export interface Definition {
   kind: DefinitionKind;
   fields: Field[];
   extensions?: string[];
+  serializerPath?: string;
 }
 
 export interface Field {

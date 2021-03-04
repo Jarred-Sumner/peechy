@@ -103,6 +103,11 @@ function compileDecode(
           break;
         }
 
+        case "alphanumeric": {
+          code = "bb.readAlphanumeric()";
+          break;
+        }
+
         case "int8": {
           code = "bb.readInt8()";
           break;
@@ -506,14 +511,13 @@ function compileEncode(
           code =
             "var encoded = " +
             type.name +
-            `[${quote(field.name + "Type")}];\n` +
+            `[message[${quote(field.name + "Type")}]];\n` +
             `    if (encoded === void 0) throw new Error('Expected ${quote(
               field.name + "Type"
-            )} to be one of ' + JSON.stringify(value) + ' for enum ${quote(
+            )} to be one of ' + JSON.stringify(${
               type.name
-            )}');
-              bb.writeVarUint(encoded);`;
-          code += "" + ("encode" + type.name) + "(value, bb);";
+            },null,2) + ' for enum ${quote(type.name)}');`;
+          code += "" + ("encode" + type.name) + "(value, bb, encoded);";
         } else {
           code = "" + ("encode" + type.name) + "(value, bb);";
         }
@@ -610,6 +614,7 @@ export function compileSchemaJS(
   let name = schema.package;
   let js: string[] = [];
   const exportsList = [];
+  const importsList = [];
 
   if (isESM) {
     name = "exports";
@@ -628,6 +633,11 @@ export function compileSchemaJS(
 
     if (definition.kind === "ALIAS") {
       aliases[definition.name] = definition.fields[0].name;
+    }
+    if (isESM && definition.serializerPath?.length) {
+      importsList.push(
+        `import {encode${definition.name}, decode${definition.name}} from "${definition.serializerPath}";`
+      );
     }
   }
 
@@ -697,25 +707,28 @@ export function compileSchemaJS(
           "decode" + definition.name,
           "encode" + definition.name
         );
-        js.push("");
-        js.push(
-          compileDecode(
-            "decode" + definition.name,
-            definition,
-            definitions,
-            withAllocator,
-            aliases
-          )
-        );
-        js.push("");
-        js.push(
-          compileEncode(
-            "encode" + definition.name,
-            definition,
-            definitions,
-            aliases
-          )
-        );
+
+        if (!isESM || !definition.serializerPath?.length) {
+          js.push("");
+          js.push(
+            compileDecode(
+              "decode" + definition.name,
+              definition,
+              definitions,
+              withAllocator,
+              aliases
+            )
+          );
+          js.push("");
+          js.push(
+            compileEncode(
+              "encode" + definition.name,
+              definition,
+              definitions,
+              aliases
+            )
+          );
+        }
         break;
       }
 
@@ -732,6 +745,10 @@ export function compileSchemaJS(
 
   js.push("");
   if (isESM) {
+    for (let importName of importsList) {
+      js.unshift(importName);
+    }
+
     for (let exportName of exportsList) {
       js.push(`export { ${exportName} }`);
     }
