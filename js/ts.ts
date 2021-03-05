@@ -70,6 +70,34 @@ export function compileSchemaTypeScript(schema: Schema): string {
       }
 
       lines.push(indent + "}");
+
+      lines.push(indent + "export const " + definition.name + "Keys = {");
+      for (var j = 0; j < definition.fields.length; ) {
+        const field = definition.fields[j];
+
+        if (descriminator.type === "discriminator") {
+          if (j === 0) {
+            j++;
+            continue;
+          }
+        }
+
+        lines.push(
+          indent + indent + "" + field.value + ': "' + field.name + '",',
+
+          indent +
+            indent +
+            "" +
+            field.name +
+            ': "' +
+            field.name +
+            '"' +
+            (j < definition.fields.length - 1 ? "," : "")
+        );
+        j++;
+      }
+
+      lines.push(indent + "}");
     } else if (definition.kind === "ENUM") {
       if (!definition.fields.length) {
         lines.push(indent + "export type " + definition.name + " = any;");
@@ -84,6 +112,28 @@ export function compileSchemaTypeScript(schema: Schema): string {
               definition.fields[j].name +
               " = " +
               definition.fields[j].value +
+              (j < definition.fields.length - 1 ? "," : "")
+          );
+        }
+
+        lines.push(indent + "}");
+
+        lines.push(indent + "export const " + definition.name + "Keys = {");
+
+        for (var j = 0; j < definition.fields.length; j++) {
+          lines.push(
+            indent +
+              indent +
+              "" +
+              definition.fields[j].value +
+              ": " +
+              `"${definition.fields[j].name}",`,
+            indent +
+              indent +
+              "" +
+              definition.fields[j].name +
+              ": " +
+              `"${definition.fields[j].name}"` +
               (j < definition.fields.length - 1 ? "," : "")
           );
         }

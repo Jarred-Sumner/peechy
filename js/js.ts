@@ -649,12 +649,15 @@ export function compileSchemaJS(
       case "SMOL":
       case "ENUM": {
         let value: any = {};
+        let keys: any = {};
         for (let j = 0; j < definition.fields.length; j++) {
           let field = definition.fields[j];
           value[field.name] = field.value;
           value[field.value] = field.value;
+          keys[field.name] = field.name;
+          keys[field.value] = field.name;
         }
-        exportsList.push(definition.name);
+        exportsList.push(definition.name, definition.name + "Keys");
         js.push(
           "const " +
             definition.name +
@@ -662,11 +665,19 @@ export function compileSchemaJS(
             JSON.stringify(value, null, 2) +
             ";"
         );
+        js.push(
+          "const " +
+            definition.name +
+            "Keys = " +
+            JSON.stringify(keys, null, 2) +
+            ";"
+        );
         break;
       }
 
       case "UNION": {
         let value: any = {};
+        let keys: any = {};
         const encoders = new Array(definition.fields.length);
         encoders.fill("() => null");
         for (let j = 0; j < definition.fields.length; j++) {
@@ -676,6 +687,8 @@ export function compileSchemaJS(
             if (aliases[field.name]) field.name = aliases[field.name];
             value[field.name] = field.value;
             value[field.value] = field.value;
+            keys[field.name] = field.name;
+            keys[field.value] = field.name;
 
             encoders[field.value] = "encode" + fieldType;
           }
@@ -688,6 +701,15 @@ export function compileSchemaJS(
             JSON.stringify(value, null, 2) +
             ";"
         );
+        js.push(
+          "const " +
+            definition.name +
+            "Keys = " +
+            JSON.stringify(keys, null, 2) +
+            ";"
+        );
+
+        exportsList.push(`${definition.name}Keys`);
         js.push("const " + definition.name + "Type = " + definition.name + ";");
         exportsList.push(definition.name + "Type");
         const encoderName = encoders.join(" , ");
