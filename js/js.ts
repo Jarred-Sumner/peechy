@@ -133,6 +133,11 @@ function compileDecode(
           break;
         }
 
+        case "lowp": {
+          code = "bb.readLowPrecisionFloat()";
+          break;
+        }
+
         case "uint": {
           code = "bb.readVarUint()";
           break;
@@ -437,6 +442,11 @@ function compileEncode(
 
       case "uint": {
         code = "bb.writeVarUint(value);";
+        break;
+      }
+
+      case "lowp": {
+        code = "bb.writeLowPrecisionFloat(value);";
         break;
       }
 

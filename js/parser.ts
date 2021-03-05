@@ -11,6 +11,7 @@ export let nativeTypes = [
   "uint32",
   "int8",
   "int16",
+  "lowp",
   "int32",
   "float32",
   "string",

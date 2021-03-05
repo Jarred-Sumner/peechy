@@ -17,6 +17,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
   lines.push(`type int = number;`);
   lines.push(`type uint = number;`);
   lines.push(`type int8 = number;`);
+  lines.push(`type lowp = number;`);
   lines.push(`type int16 = number;`);
   lines.push(`type int32 = number;`);
   lines.push(`type float32 = number;`);

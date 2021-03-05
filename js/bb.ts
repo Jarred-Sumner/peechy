@@ -422,6 +422,16 @@ export class ByteBuffer {
     this._data.set(uint8Buffer, index);
   }
 
+  static LOW_PRECISION_VALUE = 10 ** 3;
+
+  writeLowPrecisionFloat(value: number) {
+    this.writeVarInt(Math.round(ByteBuffer.LOW_PRECISION_VALUE * value));
+  }
+
+  readLowPrecisionFloat() {
+    return this.readVarInt() / ByteBuffer.LOW_PRECISION_VALUE;
+  }
+
   writeString(value: string): void {
     let codePoint;
 

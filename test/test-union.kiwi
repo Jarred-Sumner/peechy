@@ -209,3 +209,9 @@ struct Rotation {
 struct PositionPlusRotation & Rotation & Position {
 
 }
+
+struct LowpValue {
+  lowp x;
+  lowp y;
+  lowp z;
+}
