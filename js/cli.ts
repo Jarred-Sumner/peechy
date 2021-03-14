@@ -12,6 +12,7 @@ import { prettyPrintSchema } from "./printer";
 import { parseSchema } from "./parser";
 import { ByteBuffer } from "./bb";
 import { compileSchemaSkewTypes } from "./skew-types";
+import { compileSchemaGo } from "./go";
 
 let usage = [
   "",

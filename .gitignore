@@ -4,3 +4,4 @@ js/*.js
 js/*.d.ts
 js/.npmignore
 *.tgz
+js/test

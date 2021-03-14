@@ -1,0 +1,23 @@
+package TestSchema;
+
+enum Region {
+  california = 1;
+  sanFrancisco = 2;
+  sunshine = 3;
+}
+
+struct Face {
+  uint eyeCount;
+  float32 radius;
+  bool what;
+}
+
+message Hello {
+  uint hour = 1;
+  string name = 2;
+  Region region = 3;
+  Face[] face = 4;
+  string[] names = 5;
+  uint32 seconds = 6;
+}
+

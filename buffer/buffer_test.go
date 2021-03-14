@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/jarred-sumner/peechy/golang/buffer"
+	"github.com/jarred-sumner/peechy/buffer"
 	"github.com/valyala/bytebufferpool"
 )
 
