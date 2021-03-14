@@ -22,6 +22,7 @@ let usage = [
   "  --help                Print this message.",
   "  --schema [PATH]       The schema file to use.",
   "  --js [PATH]           Generate JavaScript code.",
+  "  --go [PATH]           Generate Go code.",
   "  --esm [PATH]          Generate JavaScript code as a ECMAScript module.",
   "  --js-allocator [PATH] Allow passing an allocator to import in the code.",
   "  --ts [PATH]           Generate TypeScript type definitions.",
@@ -62,6 +63,7 @@ export function main(args: string[]): number {
   let flags: { [flag: string]: string | null } = {
     "--schema": null,
     "--js": null,
+    "--go": null,
     "--esm": null,
     "--ts": null,
     "--cpp": null,
@@ -166,6 +168,10 @@ export function main(args: string[]): number {
   // Generate JavaScript code
   if (flags["--ts"] !== null) {
     writeFileString(flags["--ts"], compileSchemaTypeScript(parsed));
+  }
+
+  if (flags["--go"] !== null) {
+    writeFileString(flags["--go"], compileSchemaGo(parsed));
   }
 
   // Generate C++ code
