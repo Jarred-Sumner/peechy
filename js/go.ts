@@ -447,14 +447,14 @@ function compileDecode(
   if (definition.kind === "MESSAGE") {
     lines.push("    default:");
     lines.push(
-      '      return result, errors.New("Attempted to parse invalid message");'
+      '      return result, errors.New("attempted to parse invalid message");'
     );
     lines.push("    }");
     lines.push("  }");
   } else if (definition.kind === "UNION") {
     lines.push("    default:");
     lines.push(
-      `      return result, errors.New("Attempted to parse invalid union");`
+      `      return result, errors.New("attempted to parse invalid union");`
     );
     lines.push("  }");
   } else {
@@ -942,7 +942,7 @@ func (s *${pascalCase(definition.name)}) UnmarshalJSON(b []byte) error {
           go.push(
             `${pascalCase(field.name)}    ${typeName}     \`json:"${camelCase(
               field.name
-            )}"\` `
+            )}" redis:"${camelCase(field.name)}"\``
           );
         }
         go.push(`}`);
