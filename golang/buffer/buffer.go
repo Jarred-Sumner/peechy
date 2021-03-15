@@ -2,6 +2,7 @@
 package buffer
 
 import (
+	"encoding/ascii85"
 	"encoding/binary"
 	"math"
 	"reflect"
@@ -228,6 +229,21 @@ func (b *Buffer) ReadByteArray() []byte {
 	b.Offset += b.ReadVarUint()
 
 	return b.Bytes.B[start:b.Offset]
+}
+
+func (b *Buffer) ReadAlphanumeric() string {
+	start := b.Offset
+	b.Offset += b.ReadVarUint()
+
+	return string(b.Bytes.B[start:b.Offset])
+}
+
+func (b *Buffer) WriteAlphanumeric(s string) {
+	encoder := ascii85.NewEncoder(b.Bytes)
+
+	length, _ := encoder.Write([]byte(s))
+	encoder.Close()
+	b.Offset += uint(length)
 }
 
 func (b *Buffer) ReadUint16() uint16 {

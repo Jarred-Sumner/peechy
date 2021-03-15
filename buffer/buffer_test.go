@@ -137,6 +137,28 @@ func TestBufferReadVarInt(t *testing.T) {
 	bufferReadVarIntAssert(t, []byte{255, 255, 255, 255, 15}, -2147483648)
 }
 
+func bufferWriteAsciiAssert(t *testing.T, s string, expected []byte) {
+	bb := bytebufferpool.Get()
+
+	buffer := buffer.Buffer{
+		bb,
+		0,
+	}
+	buffer.WriteAlphanumeric(s)
+
+	if !bytes.Equal(expected, buffer.Bytes.B[0:buffer.Offset]) {
+		t.Logf("Expected %d to equal %d", expected, buffer.Bytes.B[0:buffer.Offset])
+		t.FailNow()
+	}
+
+	bytebufferpool.Put(bb)
+}
+
+func TestBufferWriteASCII(t *testing.T) {
+	bufferWriteAsciiAssert(t, "bacon", []byte{98, 97, 99, 111, 110})
+	bufferWriteAsciiAssert(t, "zz0099^@_0-+/;'", []byte{122, 122, 48, 48, 57, 57, 94, 64, 95, 48, 45, 43, 47, 59, 39})
+}
+
 func TestBufferWriteVarInt(t *testing.T) {
 	bufferWriteIntAssert(t, 0, []byte{0})
 	bufferWriteIntAssert(t, -1, []byte{1})
