@@ -17,6 +17,7 @@ export let nativeTypes = [
   "string",
   "uint",
   "discriminator",
+  "alphanumeric",
 ];
 
 export let nativeTypeMap = {
@@ -34,6 +35,7 @@ export let nativeTypeMap = {
   string: 1,
   uint: 1,
   discriminator: 1,
+  alphanumeric: 1,
 };
 
 // These are special names on the object returned by compileSchema()

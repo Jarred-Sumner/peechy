@@ -1,6 +1,6 @@
 {
   "name": "peechy",
-  "version": "0.1.17",
+  "version": "0.2.0",
   "description": "A schema-based binary format for efficiently encoding trees of data",
   "license": "MIT",
   "main": "peechy.js",

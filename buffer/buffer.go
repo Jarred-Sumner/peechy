@@ -2,10 +2,10 @@
 package buffer
 
 import (
-	"encoding/ascii85"
 	"encoding/binary"
 	"math"
 	"reflect"
+	"unicode/utf8"
 	"unsafe"
 
 	"github.com/valyala/bytebufferpool"
@@ -138,7 +138,7 @@ func (b *Buffer) WriteFloat32Array(value []float32) {
 }
 
 func (b *Buffer) WriteByte(value byte) {
-	b.WriteByte(value)
+	b.Bytes.WriteByte(value)
 	b.Offset++
 }
 
@@ -203,6 +203,10 @@ func (b *Buffer) ReadVarUint() uint {
 	shift = 0
 
 	for {
+		if b.Offset >= uint(b.Bytes.Len()) {
+			break
+		}
+
 		curr = b.ReadByte()
 		value |= uint32((curr & 127)) << shift
 		shift += 7
@@ -216,6 +220,7 @@ func (b *Buffer) ReadVarUint() uint {
 
 func (b *Buffer) ReadByte() byte {
 	start := b.Offset
+
 	b.Offset++
 	// if b.Offset > uint(b.Bytes.Len()) {
 	// 	return byte(0), errors.New("offset exceeded bounds of buffer")
@@ -232,18 +237,25 @@ func (b *Buffer) ReadByteArray() []byte {
 }
 
 func (b *Buffer) ReadAlphanumeric() string {
-	start := b.Offset
-	b.Offset += b.ReadVarUint()
 
-	return string(b.Bytes.B[start:b.Offset])
+	length := b.ReadVarUint()
+	runes := make([]rune, length)
+	for _, r := range runes {
+		runes[r] = rune(b.Bytes.B[b.Offset])
+		b.Offset++
+	}
+
+	return string(runes)
+
 }
 
 func (b *Buffer) WriteAlphanumeric(s string) {
-	encoder := ascii85.NewEncoder(b.Bytes)
 
-	length, _ := encoder.Write([]byte(s))
-	encoder.Close()
-	b.Offset += uint(length)
+	count := utf8.RuneCountInString(s)
+	b.WriteVarUint(uint(count))
+	for r := 0; r < count; r++ {
+		b.WriteByte(byte(int(s[r])))
+	}
 }
 
 func (b *Buffer) ReadUint16() uint16 {

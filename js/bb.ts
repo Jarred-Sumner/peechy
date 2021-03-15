@@ -6,6 +6,8 @@ let uint32 = new Uint32Array(int32.buffer);
 let uint8Buffer = new Uint8Array(int32.buffer);
 let int8Buffer = new Int8Array(int32.buffer);
 
+let textDecoder: TextDecoder;
+
 export let ArrayBufferType =
   typeof SharedArrayBuffer !== "undefined" ? SharedArrayBuffer : ArrayBuffer;
 
@@ -34,6 +36,47 @@ export class ByteBuffer {
     }
     //#endif
     return this._data[this._index++];
+  }
+
+  readAlphanumeric(): string {
+    const count = this.readVarUint();
+    const end = this._index + count;
+
+    //#ifdef ASSERTIONS
+    if (end > this._data.length) {
+      throw new Error("Index out of bounds");
+    }
+    //#endif
+
+    if (!textDecoder) {
+      textDecoder = new TextDecoder("utf-8");
+    }
+    const start = this._index;
+    this._index = end;
+    if (count > 0) {
+      return textDecoder.decode(this._data.subarray(start, this._index));
+    }
+
+    return "";
+  }
+
+  writeAlphanumeric(contents: string) {
+    //#ifdef ASSERTIONS
+    if (this._index + 1 > this._data.length) {
+      throw new Error("Index out of bounds");
+    }
+    //#endif
+
+    let index = this._index;
+    this._growBy(contents.length);
+    const data = this._data;
+    let i = 0;
+    let code = 0;
+    while (index < this.length) {
+      code = data[index++] = contents.charCodeAt(i++);
+      if (code > 127)
+        throw new Error(`Non-ascii character at char ${i - 1} :${contents}`);
+    }
   }
 
   readFloat32(): number {

@@ -420,6 +420,11 @@ function compileEncode(
         break;
       }
 
+      case "alphanumeric": {
+        code = "bb.writeAlphanumeric(value);";
+        break;
+      }
+
       case "int": {
         code = "bb.writeVarInt(value);";
         break;

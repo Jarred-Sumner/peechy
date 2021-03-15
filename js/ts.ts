@@ -15,6 +15,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
   lines.push(`type byte = number;`);
   lines.push(`type float = number;`);
   lines.push(`type int = number;`);
+  lines.push(`type alphanumeric = string;`);
   lines.push(`type uint = number;`);
   lines.push(`type int8 = number;`);
   lines.push(`type lowp = number;`);
@@ -99,7 +100,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
       }
 
       lines.push(indent + "}");
-    } else if (definition.kind === "ENUM") {
+    } else if (definition.kind === "ENUM" || definition.kind === "SMOL") {
       if (!definition.fields.length) {
         lines.push(indent + "export type " + definition.name + " = any;");
       } else {
@@ -396,7 +397,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
           );
         }
       }
-    } else if (definition.kind !== "ENUM") {
+    } else if (definition.kind !== "ENUM" && definition.kind !== "SMOL") {
       error(
         "Invalid definition kind " + quote(definition.kind),
         definition.line,

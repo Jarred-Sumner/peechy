@@ -1,23 +1,81 @@
 package TestSchema;
 
-enum Region {
-  california = 1;
-  sanFrancisco = 2;
-  sunshine = 3;
+smol PackageProvider {
+  npm = 1;
+  git = 2;
+  https = 3;
+  tgz = 4;
+  other = 5;
 }
 
-struct Face {
-  uint eyeCount;
-  float32 radius;
-  bool what;
+smol ExportsType {
+  commonJs = 1;
+  esModule = 2;
+  browser = 3;
 }
 
-message Hello {
-  uint hour = 1;
-  string name = 2;
-  Region region = 3;
-  Face[] face = 4;
-  string[] names = 5;
-  uint32 seconds = 6;
+struct ExportsManifest {
+  alphanumeric[] source;
+  alphanumeric[] destination;
+  ExportsType[] exportType;
 }
 
+struct Version {
+  int major;
+  int minor;
+  int patch;
+  string pre;
+  string build;
+}
+
+alias timestamp = string;
+
+message JavascriptPackageInput {
+  alphanumeric name = 1;
+  string version = 2;
+  RawDependencyList dependencies = 3;
+}
+
+struct RawDependencyList {
+  uint count;
+  alphanumeric[] names;
+  string[] versions;
+}
+
+struct JavascriptPackageManifest {
+  uint count;
+
+  alphanumeric[] name;
+  Version[] version;
+  PackageProvider[] providers;
+
+  uint[] dependencies;
+  uint[] dependenciesIndex;
+
+  ExportsManifest exportsManifest;
+  uint[] exportsManifestIndex;
+
+}
+
+message JavascriptPackageRequest {
+  string clientVersion = 1;
+  alphanumeric name = 2;
+  RawDependencyList dependencies  = 3;
+  RawDependencyList optionalDependencies  = 4;
+  RawDependencyList devDependencies  = 5;
+  RawDependencyList peerDependencies  = 6;
+}
+
+enum ErrorCode {
+  generic = 1;
+  missingPackageName = 2;
+  serverDown = 3;
+  versionDoesntExit = 4;
+}
+
+message JavascriptPackageResponse {
+  alphanumeric name = 1;
+  JavascriptPackageManifest result = 2;
+  ErrorCode errorCode = 3;
+  string message = 4;
+}

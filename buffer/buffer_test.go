@@ -2,6 +2,7 @@ package buffer_test
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/jarred-sumner/peechy/buffer"
@@ -144,6 +145,7 @@ func bufferWriteAsciiAssert(t *testing.T, s string, expected []byte) {
 		bb,
 		0,
 	}
+	buffer.Reset()
 	buffer.WriteAlphanumeric(s)
 
 	if !bytes.Equal(expected, buffer.Bytes.B[0:buffer.Offset]) {
@@ -154,9 +156,33 @@ func bufferWriteAsciiAssert(t *testing.T, s string, expected []byte) {
 	bytebufferpool.Put(bb)
 }
 
+func bufferReadAsciiAssert(t *testing.T, expected []byte, s string) {
+	bb := bytebufferpool.Get()
+
+	buffer := buffer.Buffer{
+		bb,
+		0,
+	}
+
+	buffer.WriteAlphanumeric(s)
+	buffer.Offset = 0
+	val := buffer.ReadAlphanumeric()
+
+	if strings.EqualFold(val, s) {
+		t.Logf("Expected %s to equal %s", val, s)
+		t.FailNow()
+	}
+	bytebufferpool.Put(bb)
+}
+
 func TestBufferWriteASCII(t *testing.T) {
-	bufferWriteAsciiAssert(t, "bacon", []byte{98, 97, 99, 111, 110})
-	bufferWriteAsciiAssert(t, "zz0099^@_0-+/;'", []byte{122, 122, 48, 48, 57, 57, 94, 64, 95, 48, 45, 43, 47, 59, 39})
+	bufferWriteAsciiAssert(t, "bacon", []byte{5, 98, 97, 99, 111, 110})
+	bufferWriteAsciiAssert(t, "zz0099^@_0-+/;'", []byte{byte(len("zz0099^@_0-+/;'")), 122, 122, 48, 48, 57, 57, 94, 64, 95, 48, 45, 43, 47, 59, 39})
+}
+
+func TestBufferReadASCII(t *testing.T) {
+	bufferReadAsciiAssert(t, []byte{98, 97, 99, 111, 110}, "bacon")
+	bufferReadAsciiAssert(t, []byte{122, 122, 48, 48, 57, 57, 94, 64, 95, 48, 45, 43, 47, 59, 39}, "zz0099^@_0-+/;'")
 }
 
 func TestBufferWriteVarInt(t *testing.T) {

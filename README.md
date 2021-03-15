@@ -10,6 +10,12 @@ yarn add peechy
 
 ### Whats different with this fork?
 
+#### Golang support
+
+```bash
+peechy --schema file.kiwi --go file.go
+```
+
 #### Union types
 
 ```proto

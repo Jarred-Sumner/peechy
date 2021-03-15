@@ -18,6 +18,7 @@ const TYPE_NAMES = {
   lowp: "float32",
   string: "string",
   uint: "uint",
+  alphanumeric: "string",
 };
 
 function isDiscriminatedUnion(
@@ -337,6 +338,7 @@ function compileDecode(
             } else {
               if (definition.kind === "MESSAGE") {
                 lines.push(indent + `var err error;`);
+
                 lines.push(
                   // indent + `var val *${field.type};`,
                   indent + `for j := uint(0); j < length; j++ {\n`,
@@ -348,12 +350,21 @@ function compileDecode(
                   indent + `}`
                 );
               } else {
-                lines.push(indent + `var err error;`);
+                if (!hasErr) {
+                  lines.splice(
+                    startLine,
+                    1,
+                    lines[startLine],
+                    indent + `var err error;`
+                  );
+                  hasErr = true;
+                }
+
                 lines.push(
                   indent +
                     `for j := uint(0); j < length; j++ {\n ${arrayName}[j], err = ` +
                     code +
-                    ";\n if (err != nil) {\n return nil, err;\n}\n}"
+                    ";\n if (err != nil) {\n return result, err;\n}\n}"
                 );
               }
             }
@@ -521,6 +532,11 @@ function compileEncode(
 
       case "int8": {
         code = `buf.WriteInt8(${valueName});`;
+        break;
+      }
+
+      case "alphanumeric": {
+        code = `buf.WriteAlphanumeric(${valueName});`;
         break;
       }
 
