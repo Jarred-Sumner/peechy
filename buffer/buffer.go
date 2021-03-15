@@ -2,8 +2,8 @@
 package buffer
 
 import (
+	"encoding/ascii85"
 	"encoding/binary"
-	"errors"
 	"math"
 	"reflect"
 	"unsafe"
@@ -203,7 +203,7 @@ func (b *Buffer) ReadVarUint() uint {
 	shift = 0
 
 	for {
-		curr, _ = b.ReadByte()
+		curr = b.ReadByte()
 		value |= uint32((curr & 127)) << shift
 		shift += 7
 		if (curr&128) == 0 || shift >= 35 {
@@ -214,14 +214,36 @@ func (b *Buffer) ReadVarUint() uint {
 	return uint(value >> 0)
 }
 
-func (b *Buffer) ReadByte() (byte, error) {
+func (b *Buffer) ReadByte() byte {
 	start := b.Offset
 	b.Offset++
-	if b.Offset > uint(b.Bytes.Len()) {
-		return byte(0), errors.New("offset exceeded bounds of buffer")
-	}
+	// if b.Offset > uint(b.Bytes.Len()) {
+	// 	return byte(0), errors.New("offset exceeded bounds of buffer")
+	// }
 
-	return b.Bytes.B[start], nil
+	return b.Bytes.B[start]
+}
+
+func (b *Buffer) ReadByteArray() []byte {
+	start := b.Offset
+	b.Offset += b.ReadVarUint()
+
+	return b.Bytes.B[start:b.Offset]
+}
+
+func (b *Buffer) ReadAlphanumeric() string {
+	start := b.Offset
+	b.Offset += b.ReadVarUint()
+
+	return string(b.Bytes.B[start:b.Offset])
+}
+
+func (b *Buffer) WriteAlphanumeric(s string) {
+	encoder := ascii85.NewEncoder(b.Bytes)
+
+	length, _ := encoder.Write([]byte(s))
+	encoder.Close()
+	b.Offset += uint(length)
 }
 
 func (b *Buffer) ReadUint16() uint16 {
@@ -247,8 +269,7 @@ func (b *Buffer) ReadVarInt() int {
 }
 
 func (b *Buffer) ReadInt8() int8 {
-	v, _ := b.ReadByte()
-	return int8(v)
+	return int8(b.ReadByte())
 }
 func (b *Buffer) ReadInt16() int16 {
 	return int16(b.ReadUint16())
@@ -265,7 +286,7 @@ func (b *Buffer) ReadString() string {
 	var count uint
 	count = 0
 	for start < uint(b.Bytes.Len()) {
-		curr, _ = b.ReadByte()
+		curr = b.ReadByte()
 		count++
 		if curr == 0 {
 			break
