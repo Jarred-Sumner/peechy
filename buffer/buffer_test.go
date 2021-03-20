@@ -145,7 +145,6 @@ func bufferWriteAsciiAssert(t *testing.T, s string, expected []byte) {
 		bb,
 		0,
 	}
-	buffer.Reset()
 	buffer.WriteAlphanumeric(s)
 
 	if !bytes.Equal(expected, buffer.Bytes.B[0:buffer.Offset]) {
@@ -168,19 +167,55 @@ func bufferReadAsciiAssert(t *testing.T, expected []byte, s string) {
 	buffer.Offset = 0
 	val := buffer.ReadAlphanumeric()
 
-	if strings.EqualFold(val, s) {
+	if !strings.EqualFold(val, s) {
 		t.Logf("Expected %s to equal %s", val, s)
 		t.FailNow()
 	}
 	bytebufferpool.Put(bb)
 }
 
+func bufferWriteStringAssert(t *testing.T, s string, expected []byte) {
+	bb := bytebufferpool.Get()
+
+	buffer := buffer.Buffer{
+		bb,
+		0,
+	}
+
+	buffer.WriteString(s)
+	if !bytes.EqualFold(expected, bb.B[0:buffer.Offset]) {
+		t.Logf("Expected %d to equal %d", expected, bb.B[0:buffer.Offset])
+		t.FailNow()
+	}
+	bytebufferpool.Put(bb)
+}
+
+func bufferReadStringAssert(t *testing.T, s string, expected []byte) {
+	bb := bytebufferpool.ByteBuffer{
+		B: expected,
+	}
+
+	buffer := buffer.Buffer{
+		&bb,
+		0,
+	}
+
+	val := buffer.ReadString()
+
+	if !strings.EqualFold(val, s) {
+		t.Logf("Expected %s to equal %s", val, s)
+		t.FailNow()
+	}
+}
+
 func TestBufferWriteASCII(t *testing.T) {
-	bufferWriteAsciiAssert(t, "bacon", []byte{5, 98, 97, 99, 111, 110})
-	bufferWriteAsciiAssert(t, "zz0099^@_0-+/;'", []byte{byte(len("zz0099^@_0-+/;'")), 122, 122, 48, 48, 57, 57, 94, 64, 95, 48, 45, 43, 47, 59, 39})
+	bufferWriteAsciiAssert(t, "", []byte{0})
+	bufferWriteAsciiAssert(t, "bacon", []byte{98, 97, 99, 111, 110, 0})
+	bufferWriteAsciiAssert(t, "zz0099^@_0-+/;'", []byte{122, 122, 48, 48, 57, 57, 94, 64, 95, 48, 45, 43, 47, 59, 39, 0})
 }
 
 func TestBufferReadASCII(t *testing.T) {
+	bufferReadAsciiAssert(t, []byte{0}, "")
 	bufferReadAsciiAssert(t, []byte{98, 97, 99, 111, 110}, "bacon")
 	bufferReadAsciiAssert(t, []byte{122, 122, 48, 48, 57, 57, 94, 64, 95, 48, 45, 43, 47, 59, 39}, "zz0099^@_0-+/;'")
 }
@@ -220,8 +255,19 @@ func TestBufferWriteVarUint(t *testing.T) {
 	bufferWriteVarUintAssert(t, 4294967295, []byte{255, 255, 255, 255, 15})
 }
 
-func TestBufferReadVarUint(t *testing.T) {
+func TestBufferReadString(t *testing.T) {
+	bufferReadStringAssert(t, "", []byte{0})
+	bufferReadStringAssert(t, "abc", []byte{97, 98, 99, 0})
+	bufferReadStringAssert(t, "🙉🙈🙊", []byte{240, 159, 153, 137, 240, 159, 153, 136, 240, 159, 153, 138, 0})
+}
 
+func TestBufferWriteString(t *testing.T) {
+	bufferWriteStringAssert(t, "", []byte{0})
+	bufferWriteStringAssert(t, "abc", []byte{97, 98, 99, 0})
+	bufferWriteStringAssert(t, "🙉🙈🙊", []byte{240, 159, 153, 137, 240, 159, 153, 136, 240, 159, 153, 138, 0})
+}
+
+func TestBufferReadVarUint(t *testing.T) {
 	bufferReadVarUintAssert(t, []byte{0}, 0)
 	bufferReadVarUintAssert(t, []byte{1}, 1)
 	bufferReadVarUintAssert(t, []byte{2}, 2)
@@ -240,7 +286,6 @@ func TestBufferReadVarUint(t *testing.T) {
 	bufferReadVarUintAssert(t, []byte{253, 255, 255, 255, 15}, 4294967293)
 	bufferReadVarUintAssert(t, []byte{254, 255, 255, 255, 15}, 4294967294)
 	bufferReadVarUintAssert(t, []byte{255, 255, 255, 255, 15}, 4294967295)
-
 }
 
 func TestBufferWrite(t *testing.T) {

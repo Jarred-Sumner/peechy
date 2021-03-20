@@ -1,5 +1,5 @@
 <meta charset="utf8" />
-<title>Kiwi File Format Demo</title>
+<title>Peechy File Format Demo</title>
 <style>
   body {
     font: 14px/150% sans-serif;
@@ -56,11 +56,13 @@
   }
 </style>
 <body>
-  <h1>Kiwi File Format Demo</h1>
+  <h1>Peechy File Format Demo</h1>
 
   <p>
     See
-    <a href="https://github.com/evanw/kiwi">https://github.com/evanw/kiwi</a>
+    <a href="https://github.com/jarred-sumner/peechy"
+      >https://github.com/jarred-sumner/peechy</a
+    >
     for more information.
   </p>
 
@@ -77,6 +79,7 @@
 {
   "clientID": 100,
   "type": "POINTED",
+  "hi": "Hello there!",
   "colors": [
     {
       "red": 255,
@@ -129,6 +132,7 @@ message Example {
   uint clientID = 1;
   Type type = 2;
   Color[] colors = 3;
+  string hi = 4;
 }
 </textarea
     >
@@ -173,42 +177,44 @@ Success</textarea
     }
 
     function update() {
-      try {
-        var compiled = kiwi.compileSchema(schema.value);
-        var parts = schema.value.split(/\b(?:message|struct)\s+(\w+)\b/g);
+      // try {
+      var compiled = peechy.compileSchema(schema.value);
+      var parts = schema.value.split(/\b(?:message|struct)\s+(\w+)\b/g);
 
-        if (parts.length < 2) {
-          throw new Error("No message or struct found");
-        }
-
-        // Encode using the last message found in the schema
-        var name = parts[parts.length - 2];
-
-        if (document.activeElement === json) {
-          const buffer = new compiled.ByteBuffer();
-          compiled["encode" + name](JSON.parse(json.value), buffer);
-          binary.value = toHex(buffer.toUint8Array()) + "\n";
-        } else if (document.activeElement === binary) {
-          json.value =
-            JSON.stringify(
-              compiled["decode" + name](
-                new compiled.ByteBuffer(fromHex(binary.value))
-              ),
-              null,
-              2
-            ) + "\n";
-        }
-
-        log.value = "Success";
-      } catch (e) {
-        var text = e + "";
-        log.value =
-          e && e.stack
-            ? e.stack.slice(0, text.length) === text
-              ? e.stack
-              : text + "\n" + e.stack
-            : text;
+      if (parts.length < 2) {
+        throw new Error("No message or struct found");
       }
+
+      // Encode using the last message found in the schema
+      var name = parts[parts.length - 2];
+
+      if (document.activeElement === json) {
+        const buffer = new compiled.ByteBuffer(new Uint8Array(256));
+        buffer.length = 0;
+        buffer._index = 0;
+        compiled["encode" + name](JSON.parse(json.value), buffer);
+        binary.value = toHex(buffer.toUint8Array()) + "\n";
+      } else if (document.activeElement === binary) {
+        json.value =
+          JSON.stringify(
+            compiled["decode" + name](
+              new compiled.ByteBuffer(fromHex(binary.value))
+            ),
+            null,
+            2
+          ) + "\n";
+      }
+
+      log.value = "Success";
+      // } catch (e) {
+      //   var text = e + "";
+      //   log.value =
+      //     e && e.stack
+      //       ? e.stack.slice(0, text.length) === text
+      //         ? e.stack
+      //         : text + "\n" + e.stack
+      //       : text;
+      // }
     }
 
     json.onfocus = binary.onfocus = schema.onfocus = update;

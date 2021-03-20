@@ -7,6 +7,7 @@ let uint8Buffer = new Uint8Array(int32.buffer);
 let int8Buffer = new Int8Array(int32.buffer);
 
 let textDecoder: TextDecoder;
+let textEncoder: TextEncoder;
 
 export let ArrayBufferType =
   typeof SharedArrayBuffer !== "undefined" ? SharedArrayBuffer : ArrayBuffer;
@@ -39,44 +40,39 @@ export class ByteBuffer {
   }
 
   readAlphanumeric(): string {
-    const count = this.readVarUint();
-    const end = this._index + count;
-
-    //#ifdef ASSERTIONS
-    if (end > this._data.length) {
-      throw new Error("Index out of bounds");
-    }
-    //#endif
-
     if (!textDecoder) {
       textDecoder = new TextDecoder("utf-8");
     }
-    const start = this._index;
-    this._index = end;
-    if (count > 0) {
-      return textDecoder.decode(this._data.subarray(start, this._index));
+
+    let start = this._index;
+    let char = 256;
+    const end = this.length - 1;
+    while (this._index < end && char > 0) {
+      char = this._data[this._index++];
     }
 
-    return "";
+    return String.fromCharCode(...this._data.subarray(start, this._index - 1));
   }
 
   writeAlphanumeric(contents: string) {
     //#ifdef ASSERTIONS
-    if (this._index + 1 > this._data.length) {
+    if (this.length + 1 > this._data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
 
-    let index = this._index;
+    let index = this.length;
     this._growBy(contents.length);
     const data = this._data;
     let i = 0;
     let code = 0;
-    while (index < this.length) {
+    while (i < contents.length) {
       code = data[index++] = contents.charCodeAt(i++);
       if (code > 127)
         throw new Error(`Non-ascii character at char ${i - 1} :${contents}`);
     }
+
+    this.writeByte(0);
   }
 
   readFloat32(): number {
@@ -270,52 +266,18 @@ export class ByteBuffer {
   }
 
   readString(): string {
-    let result = "";
-
-    while (true) {
-      let codePoint;
-
-      // Decode UTF-8
-      let a = this.readByte();
-      if (a < 0xc0) {
-        codePoint = a;
-      } else {
-        let b = this.readByte();
-        if (a < 0xe0) {
-          codePoint = ((a & 0x1f) << 6) | (b & 0x3f);
-        } else {
-          let c = this.readByte();
-          if (a < 0xf0) {
-            codePoint = ((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f);
-          } else {
-            let d = this.readByte();
-            codePoint =
-              ((a & 0x07) << 18) |
-              ((b & 0x3f) << 12) |
-              ((c & 0x3f) << 6) |
-              (d & 0x3f);
-          }
-        }
-      }
-
-      // Strings are null-terminated
-      if (codePoint === 0) {
-        break;
-      }
-
-      // Encode UTF-16
-      if (codePoint < 0x10000) {
-        result += String.fromCharCode(codePoint);
-      } else {
-        codePoint -= 0x10000;
-        result += String.fromCharCode(
-          (codePoint >> 10) + 0xd800,
-          (codePoint & ((1 << 10) - 1)) + 0xdc00
-        );
-      }
+    let start = this._index;
+    let char = 256;
+    const end = this.length - 1;
+    while (this._index < end && char > 0) {
+      char = this._data[this._index++];
     }
 
-    return result;
+    if (!textDecoder) {
+      textDecoder = new TextDecoder("utf8");
+    }
+
+    return textDecoder.decode(this._data.subarray(start, this._index - 1));
   }
 
   static WIGGLE_ROOM = 1;
@@ -476,40 +438,23 @@ export class ByteBuffer {
   }
 
   writeString(value: string): void {
-    let codePoint;
+    var s = value.length;
+    for (var i = value.length - 1; i >= 0; i--) {
+      var code = value.charCodeAt(i);
+      if (code > 0x7f && code <= 0x7ff) s++;
+      else if (code > 0x7ff && code <= 0xffff) s += 2;
+      if (code >= 0xdc00 && code <= 0xdfff) i--; //trail surrogate
+    }
 
-    for (let i = 0; i < value.length; i++) {
-      // Decode UTF-16
-      let a = value.charCodeAt(i);
-      if (i + 1 === value.length || a < 0xd800 || a >= 0xdc00) {
-        codePoint = a;
-      } else {
-        let b = value.charCodeAt(++i);
-        codePoint = (a << 10) + b + (0x10000 - (0xd800 << 10) - 0xdc00);
+    if (s > 0) {
+      if (!textEncoder) {
+        textEncoder = new TextEncoder();
       }
 
-      // Strings are null-terminated
-      if (codePoint === 0) {
-        throw new Error("Cannot encode a string containing the null character");
-      }
+      const offset = this.length;
+      this._growBy(s);
 
-      // Encode UTF-8
-      if (codePoint < 0x80) {
-        this.writeByte(codePoint);
-      } else {
-        if (codePoint < 0x800) {
-          this.writeByte(((codePoint >> 6) & 0x1f) | 0xc0);
-        } else {
-          if (codePoint < 0x10000) {
-            this.writeByte(((codePoint >> 12) & 0x0f) | 0xe0);
-          } else {
-            this.writeByte(((codePoint >> 18) & 0x07) | 0xf0);
-            this.writeByte(((codePoint >> 12) & 0x3f) | 0x80);
-          }
-          this.writeByte(((codePoint >> 6) & 0x3f) | 0x80);
-        }
-        this.writeByte((codePoint & 0x3f) | 0x80);
-      }
+      textEncoder.encodeInto(value, this._data.subarray(offset, this.length));
     }
 
     // Strings are null-terminated

@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"math"
 	"reflect"
-	"unicode/utf8"
 	"unsafe"
 
 	"github.com/valyala/bytebufferpool"
@@ -49,6 +48,10 @@ func (b *Buffer) ReadBool() bool {
 	offset := b.Offset
 	b.Offset++
 	return b.Bytes.B[offset] >= 1
+}
+
+func (b *Buffer) Slice() []byte {
+	return b.Bytes.B[0:b.Offset]
 }
 
 func (b *Buffer) WriteUint16(value uint16) {
@@ -178,9 +181,11 @@ func (b *Buffer) WriteLowpFloat(value float64) {
 	b.WriteVarInt(int(math.Round(value * 1000)))
 }
 func (b *Buffer) WriteString(s string) {
-	b.Bytes.WriteString(s)
-	b.Offset += uint(len(s))
-	b.Bytes.WriteByte(0)
+	if len(s) > 0 {
+		byteLength, _ := b.Bytes.WriteString(s)
+		b.Offset += uint(byteLength)
+	}
+	b.WriteByte(0)
 }
 
 func (b *Buffer) ReadVarFloat() float32 {
@@ -236,26 +241,36 @@ func (b *Buffer) ReadByteArray() []byte {
 	return b.Bytes.B[start:b.Offset]
 }
 
-func (b *Buffer) ReadAlphanumeric() string {
+const zeroRune = rune(byte(0))
 
-	length := b.ReadVarUint()
-	runes := make([]rune, length)
-	for _, r := range runes {
-		runes[r] = rune(b.Bytes.B[b.Offset])
-		b.Offset++
+func (b *Buffer) ReadAlphanumeric() string {
+	runes := make([]rune, 0, 10)
+	var r rune
+
+	for {
+		r = b.ReadRune()
+		if r == zeroRune {
+			break
+		}
+
+		runes = append(runes, r)
 	}
 
 	return string(runes)
+}
+
+func (b *Buffer) ReadRune() rune {
+	pos := b.Offset
+	b.Offset++
+	return rune(b.Bytes.B[pos])
 
 }
 
 func (b *Buffer) WriteAlphanumeric(s string) {
-
-	count := utf8.RuneCountInString(s)
-	b.WriteVarUint(uint(count))
-	for r := 0; r < count; r++ {
-		b.WriteByte(byte(int(s[r])))
+	for _, r := range s {
+		b.WriteByte(byte(r))
 	}
+	b.WriteByte(0)
 }
 
 func (b *Buffer) ReadUint16() uint16 {
@@ -294,18 +309,21 @@ func (b *Buffer) ReadLowpFloat() float32 {
 }
 func (b *Buffer) ReadString() string {
 	start := b.Offset
-	var curr byte
-	var count uint
-	count = 0
-	for start < uint(b.Bytes.Len()) {
-		curr = b.ReadByte()
-		count++
-		if curr == 0 {
+	var stop int
+
+	for i, char := range b.Bytes.B[start:] {
+		if char == 0 {
+			stop = i
 			break
 		}
 	}
+	b.Offset += uint(stop + 1)
+	if stop > 0 {
+		return string(b.Bytes.B[start : b.Offset-1])
+	} else {
+		return ""
+	}
 
-	return string(b.Bytes.B[start : start+count])
 }
 
 func (b *Buffer) ReadInt8Array() []int8 {
