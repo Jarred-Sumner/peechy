@@ -790,7 +790,11 @@ export function compileSchema(schema: Schema): string {
       case "ENUM": {
         let value: any = {};
         let keys: any = {};
-        go.push(`type ${pascalCase(definition.name)} uint`);
+        go.push(
+          `type ${pascalCase(definition.name)} ${
+            definition.kind === "SMOL" ? "byte" : "uint"
+          }`
+        );
         go.push("");
 
         go.push("const (");
