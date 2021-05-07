@@ -13,6 +13,7 @@ import { parseSchema } from "./parser";
 import { ByteBuffer } from "./bb";
 import { compileSchemaSkewTypes } from "./skew-types";
 import { compileSchemaGo } from "./go";
+import { compileSchemaZig } from "./zig";
 
 let usage = [
   "",
@@ -24,6 +25,7 @@ let usage = [
   "  --schema [PATH]       The schema file to use.",
   "  --js [PATH]           Generate JavaScript code.",
   "  --go [PATH]           Generate Go code.",
+  "  --zig [PATH]          Generate Zig code.",
   "  --esm [PATH]          Generate JavaScript code as a ECMAScript module.",
   "  --js-allocator [PATH] Allow passing an allocator to import in the code.",
   "  --ts [PATH]           Generate TypeScript type definitions.",
@@ -67,6 +69,7 @@ export function main(args: string[]): number {
     "--go": null,
     "--esm": null,
     "--ts": null,
+    "--zig": null,
     "--cpp": null,
     "--callback-cpp": null,
     "--js-allocator": null,
@@ -173,6 +176,10 @@ export function main(args: string[]): number {
 
   if (flags["--go"] !== null) {
     writeFileString(flags["--go"], compileSchemaGo(parsed));
+  }
+
+  if (flags["--zig"] !== null) {
+    writeFileString(flags["--zig"], compileSchemaZig(parsed));
   }
 
   // Generate C++ code

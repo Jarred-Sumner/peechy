@@ -7,3 +7,5 @@ js/.npmignore
 js/test
 
 test_schema.go
+
+zig-cache

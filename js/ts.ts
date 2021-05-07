@@ -8,7 +8,6 @@ export function compileSchemaTypeScript(schema: Schema): string {
   var lines = [`import type {ByteBuffer} from "${KIWI_IMPORT_PATH}";\n`];
 
   if (schema.package !== null) {
-    lines.push("export namespace " + schema.package + " {");
     indent += "  ";
   }
 
@@ -464,10 +463,6 @@ export function compileSchemaTypeScript(schema: Schema): string {
   // lines.push(indent + indent + "ByteBuffer: ByteBuffer;");
 
   // lines.push(indent + "}");
-
-  if (schema.package !== null) {
-    lines.push("}");
-  }
 
   lines.push("");
   return lines.join("\n");

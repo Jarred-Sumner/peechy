@@ -376,11 +376,12 @@ export class ByteBuffer {
   }
 
   writeVarUint(value: number): void {
-    do {
-      let byte = value & 127;
-      value >>>= 7;
-      this.writeByte(value ? byte | 128 : byte);
-    } while (value);
+    this.writeUint32(value);
+    // do {
+    //   let byte = value & 127;
+    //   value >>>= 7;
+    //   this.writeByte(value ? byte | 128 : byte);
+    // } while (value);
   }
 
   writeUint16(value: number): void {
@@ -400,7 +401,8 @@ export class ByteBuffer {
   }
 
   writeVarInt(value: number): void {
-    this.writeVarUint((value << 1) ^ (value >> 31));
+    this.writeInt32(value);
+    // this.writeVarUint((value << 1) ^ (value >> 31));
   }
 
   writeInt8(value: number): void {

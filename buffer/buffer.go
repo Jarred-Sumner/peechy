@@ -27,20 +27,20 @@ func (b *Buffer) WriteFloat32(value float32) {
 	b.Offset++
 }
 func (b *Buffer) WriteVarUint(value uint) {
+	b.WriteUint32(uint32(value))
+	// for {
+	// 	curr := byte(value) & 127
+	// 	value >>= 7
 
-	for {
-		curr := byte(value) & 127
-		value >>= 7
+	// 	if value == 0 {
+	// 		b.Bytes.WriteByte(curr)
+	// 		b.Offset++
+	// 		return
+	// 	}
 
-		if value == 0 {
-			b.Bytes.WriteByte(curr)
-			b.Offset++
-			return
-		}
-
-		b.Bytes.WriteByte(curr | 128)
-		b.Offset++
-	}
+	// 	b.Bytes.WriteByte(curr | 128)
+	// 	b.Offset++
+	// }
 
 }
 
@@ -151,7 +151,8 @@ func (b *Buffer) WriteByteArray(value []byte) {
 }
 
 func (b *Buffer) WriteVarInt(value int) {
-	b.WriteVarUint(uint((value << 1) ^ (value >> 31)))
+	b.WriteInt32(int32(value))
+	// b.WriteVarUint(uint((value << 1) ^ (value >> 31)))
 }
 func (b *Buffer) WriteInt8(value int8) {
 	bytes := (*[1]byte)(unsafe.Pointer(&value))[:]
@@ -200,27 +201,28 @@ func (b *Buffer) ReadFloat32() float32 {
 }
 
 func (b *Buffer) ReadVarUint() uint {
-	var value uint32
-	var shift uint32
-	var curr uint8
+	return uint(b.ReadUint32())
+	// var value uint32
+	// var shift uint32
+	// var curr uint8
 
-	value = 0
-	shift = 0
+	// value = 0
+	// shift = 0
 
-	for {
-		if b.Offset >= uint(b.Bytes.Len()) {
-			break
-		}
+	// for {
+	// 	if b.Offset >= uint(b.Bytes.Len()) {
+	// 		break
+	// 	}
 
-		curr = b.ReadByte()
-		value |= uint32((curr & 127)) << shift
-		shift += 7
-		if (curr&128) == 0 || shift >= 35 {
-			break
-		}
-	}
+	// 	curr = b.ReadByte()
+	// 	value |= uint32((curr & 127)) << shift
+	// 	shift += 7
+	// 	if (curr&128) == 0 || shift >= 35 {
+	// 		break
+	// 	}
+	// }
 
-	return uint(value >> 0)
+	// return uint(value >> 0)
 }
 
 func (b *Buffer) ReadByte() byte {
