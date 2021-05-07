@@ -213,14 +213,15 @@ export class ByteBuffer {
   }
 
   readVarUint(): number {
-    let value = 0;
-    let shift = 0;
-    do {
-      var byte = this.readByte();
-      value |= (byte & 127) << shift;
-      shift += 7;
-    } while (byte & 128 && shift < 35);
-    return value >>> 0;
+    return this.readUint32();
+    // let value = 0;
+    // let shift = 0;
+    // do {
+    //   var byte = this.readByte();
+    //   value |= (byte & 127) << shift;
+    //   shift += 7;
+    // } while (byte & 128 && shift < 35);
+    // return value >>> 0;
   }
 
   readInt32(): number {
@@ -261,8 +262,7 @@ export class ByteBuffer {
   }
 
   readVarInt(): number {
-    let value = this.readVarUint() | 0;
-    return value & 1 ? ~(value >>> 1) : value >>> 1;
+    return this.readInt32();
   }
 
   readString(): string {
