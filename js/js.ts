@@ -35,7 +35,7 @@ function compileDecode(
     lines.push("");
 
     if (hasDiscriminator) {
-      lines.push("  switch (bb.readVarUint()) {");
+      lines.push("  switch (bb.readByte()) {");
       indent = "      ";
       for (let i = 1; i < definition.fields.length; i++) {
         let field = definition.fields[i];
@@ -363,7 +363,7 @@ function compileEncode(
 
     lines.push("");
 
-    lines.push(`  bb.writeVarUint(type);`);
+    lines.push(`  bb.writeByte(type);`);
 
     lines.push("");
 
@@ -610,7 +610,7 @@ function compileEncode(
 
   // A field id of zero is reserved to indicate the end of the message
   if (definition.kind === "MESSAGE") {
-    lines.push("  bb.writeVarUint(0);");
+    lines.push("  bb.writeByte(0);");
   }
 
   lines.push("");
