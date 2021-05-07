@@ -515,7 +515,7 @@ function compileEncode(
 
     switch (fieldType) {
       case "bool": {
-        code = `try writer.writeByte(if (${valueName}) @as(u8, 1) : @as(u8, 0));`;
+        code = `try writer.writeByte(if (${valueName}) @as(u8, 1) else  @as(u8, 0));`;
         break;
       }
 
