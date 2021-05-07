@@ -121,7 +121,7 @@ function compileDecode(
 
     switch (fieldType) {
       case "bool": {
-        code = "try reader.readByte()) == @as(u8, 1)";
+        code = "try reader.readByte() == @as(u8, 1)";
         if (!field.isArray) {
           code = `result.${snakeCase(field.name)} = ${code}`;
         }
@@ -937,7 +937,7 @@ export function compileSchema(schema: Schema): string {
             field.type !== "alphanumeric" &&
             TYPE_NAMES[field.type]
           ) {
-            if (TYPE_NAMES[field.type] === TYPE_NAMES.bool) {
+            if (field.type === "bool") {
               go.push(`${snakeCase(field.name)}: ${typeName} = false,`);
             } else {
               go.push(`${snakeCase(field.name)}: ${typeName} = 0,`);
