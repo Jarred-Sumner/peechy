@@ -441,6 +441,10 @@ export class ByteBuffer {
 
   writeString(value: string): void {
     var s = value.length;
+
+    // Strings are not null-terminated
+    this.writeVarUint(s);
+
     for (var i = value.length - 1; i >= 0; i--) {
       var code = value.charCodeAt(i);
       if (code > 0x7f && code <= 0x7ff) s++;
@@ -458,8 +462,5 @@ export class ByteBuffer {
 
       textEncoder.encodeInto(value, this._data.subarray(offset, this.length));
     }
-
-    // Strings are null-terminated
-    this.writeByte(0);
   }
 }

@@ -121,7 +121,7 @@ function compileDecode(
 
     switch (fieldType) {
       case "bool": {
-        code = "try reader.readByte() == @as(u8, 1)";
+        code = "(try reader.readByte()) == @as(u8, 1)";
         if (!field.isArray) {
           code = `result.${snakeCase(field.name)} = ${code}`;
         }
@@ -600,17 +600,19 @@ function compileEncode(
               quote(field.name)
           );
         } else if (type.kind === "ENUM" && !field.isArray) {
+          var inner = `@enumToInt(result.${fieldName})`;
           if (definition.kind === "MESSAGE") {
-            code = `try writer.writeAll(@intCast(u8, result.${fieldName} orelse unreachable))`;
-          } else {
-            code = `try writer.writeAll(@intCast(u8, result.${fieldName}))`;
+            inner = `@enumToInt(result.${fieldName} orelse unreachable)`;
           }
+
+          code = `try writer.writeIntNative(@TypeOf(${inner}), ${inner});`;
         } else if (type.kind === "SMOL" && !field.isArray) {
+          var inner = `@enumToInt(result.${fieldName})`;
           if (definition.kind === "MESSAGE") {
-            code = `try writer.writeByte(@intCast(u8, &result.${fieldName} orelse unreachable))`;
-          } else {
-            code = `try writer.writeByte(@intCast(u8, result.${fieldName}))`;
+            inner = `@enumToInt(result.${fieldName} orelse unreachable)`;
           }
+
+          code = `try writer.writeIntNative(@TypeOf(${inner}), ${inner});`;
         } else if (type.kind === "ENUM" && field.isArray) {
           if (definition.kind === "MESSAGE") {
             code = `try writer.writeByte(@enumToInt(result.${fieldName}[j] orelse unreachable))`;
@@ -785,7 +787,6 @@ export function compileSchema(schema: Schema): string {
   const exportsList = [];
   const importsList = [];
 
-  go.push(`const buffer = @import("buffer.zig");`);
   go.push("");
   go.push(`const std = @import("std");`);
   go.push("");

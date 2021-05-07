@@ -36,7 +36,6 @@ export function compileSchemaTypeScript(schema: Schema): string {
 
     if (definition.kind === "UNION") {
       unionsByName[definition.name] = i;
-
       lines.push(indent + "export enum " + definition.name + "Type {");
 
       const descriminator = definition.fields[0];
