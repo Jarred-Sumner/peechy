@@ -73,7 +73,7 @@ function compileDecode(
 
     if (definition.kind === "MESSAGE") {
       lines.push("  while (true) {");
-      lines.push("    switch (bb.readVarUint()) {");
+      lines.push("    switch (bb.readByte()) {");
       lines.push("    case 0:");
       lines.push("      return result;");
       lines.push("");
@@ -549,7 +549,7 @@ function compileEncode(
     }
 
     if (definition.kind === "MESSAGE") {
-      lines.push("    bb.writeVarUint(" + field.value + ");");
+      lines.push("    bb.writeByte(" + field.value + ");");
     }
 
     if (field.isArray) {
