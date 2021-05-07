@@ -937,7 +937,11 @@ export function compileSchema(schema: Schema): string {
             field.type !== "alphanumeric" &&
             TYPE_NAMES[field.type]
           ) {
-            go.push(`${snakeCase(field.name)}: ${typeName} = 0,`);
+            if (TYPE_NAMES[field.type] === TYPE_NAMES.bool) {
+              go.push(`${snakeCase(field.name)}: ${typeName} = false,`);
+            } else {
+              go.push(`${snakeCase(field.name)}: ${typeName} = 0,`);
+            }
           } else {
             go.push(`${snakeCase(field.name)}: ${typeName},`);
           }
