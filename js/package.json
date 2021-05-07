@@ -13,6 +13,7 @@
     "cjs": "esbuild *.ts --format=cjs --outdir=.",
     "precjs": "rm ./*.d.ts; rm ./*.d.js; rm -f *.js",
     "build": "npm run cjs && npm run browser-iife && npm run browser-esm;",
+    "demo": "serve -p 5001 ../",
     "browser-iife": "esbuild browser.ts --format=iife --bundle --global-name=peechy --platform=browser > browser.min.js",
     "browser-esm": "esbuild browser.ts --format=esm --bundle --platform=browser > browser.js",
     "typedefs": "tsc -d && ls *.ts",
@@ -26,6 +27,7 @@
     "@types/node": "13.1.6",
     "mocha": "7.0.0",
     "rollup": "1.31.0",
+    "serve": "^11.3.2",
     "skew": "0.7.43",
     "terser": "4.6.3",
     "typescript": "latest"

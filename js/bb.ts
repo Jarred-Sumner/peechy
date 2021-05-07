@@ -212,6 +212,9 @@ export class ByteBuffer {
     return uint16[0];
   }
 
+  // This is no longer var uint because the use-case changed and I haven't had time to update all the references
+  // This is a uint32 for performance reasons. var uint is very cheap in Go/native languages but very expensive in JavaScript
+  // So we opt for the easy route.
   readVarUint(): number {
     return this.readUint32();
     // let value = 0;
@@ -265,19 +268,16 @@ export class ByteBuffer {
     return this.readInt32();
   }
 
+  // This is not a null-terminated string.
   readString(): string {
+    const length = this.readVarUint();
     let start = this._index;
-    let char = 256;
-    const end = this.length - 1;
-    while (this._index < end && char > 0) {
-      char = this._data[this._index++];
-    }
-
+    this._index += length;
     if (!textDecoder) {
       textDecoder = new TextDecoder("utf8");
     }
 
-    return textDecoder.decode(this._data.subarray(start, this._index - 1));
+    return textDecoder.decode(this._data.subarray(start, this._index));
   }
 
   static WIGGLE_ROOM = 1;
@@ -440,27 +440,29 @@ export class ByteBuffer {
   }
 
   writeString(value: string): void {
-    var s = value.length;
+    // length in bytes, not codepoints!
+    // the reason for that is to minimize allocations
+    var initial_offset = this.length;
+    this.writeVarUint(value.length);
 
-    // Strings are not null-terminated
-    this.writeVarUint(s);
-
-    for (var i = value.length - 1; i >= 0; i--) {
-      var code = value.charCodeAt(i);
-      if (code > 0x7f && code <= 0x7ff) s++;
-      else if (code > 0x7ff && code <= 0xffff) s += 2;
-      if (code >= 0xdc00 && code <= 0xdfff) i--; //trail surrogate
+    if (!textEncoder) {
+      textEncoder = new TextEncoder();
     }
 
-    if (s > 0) {
-      if (!textEncoder) {
-        textEncoder = new TextEncoder();
-      }
+    const offset = this.length;
+    // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
+    this._growBy(value.length * 2 + 5);
 
-      const offset = this.length;
-      this._growBy(s);
+    const result = textEncoder.encodeInto(value, this._data.subarray(offset));
+    this.length = offset + result.written;
 
-      textEncoder.encodeInto(value, this._data.subarray(offset, this.length));
+    // If our guess was incorrect, let's go back and fix it.
+    if (result.written !== value.length) {
+      uint32[0] = result.written;
+      this._data[initial_offset++] = uint8Buffer[0];
+      this._data[initial_offset++] = uint8Buffer[1];
+      this._data[initial_offset++] = uint8Buffer[2];
+      this._data[initial_offset++] = uint8Buffer[3];
     }
   }
 }
