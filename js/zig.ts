@@ -666,7 +666,11 @@ function compileEncode(
           if (definition.kind === "MESSAGE") {
             // valueName = "" + valueName;
           }
-          lines.push(indent + `try writer.writeAll(${valueName});`);
+          lines.push(
+            indent +
+              `try writer.writeIntNative(u32, @intCast(u32, ${valueName}.len));`,
+            indent + `try writer.writeAll(${valueName});`
+          );
           break;
         }
 
@@ -677,6 +681,8 @@ function compileEncode(
         case "int32":
         case "float32": {
           lines.push(
+            indent +
+              `try writer.writeIntNative(u32, @intCast(u32, ${valueName}.len));`,
             indent + `try writer.writeAll(std.mem.sliceAsBytes(${valueName}));`
           );
           break;
