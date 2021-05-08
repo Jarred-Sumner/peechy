@@ -215,8 +215,28 @@ function compileDecode(
             //   lines.splice(startLine, 1, lines[startLine], "var err error;");
             //   hasErr = true;
             // }
+            if (!hasLength) {
+              lines.splice(
+                startLine,
+                1,
+                lines[startLine],
+                indent + `var length: usize = 0;`
+              );
+              hasLength = true;
+            }
 
             lines.push(
+              indent +
+                `length = @intCast(usize, try reader.readIntNative(u32));`
+            );
+
+            lines.push(
+              indent + `if (result.${snakeCase(field.name)} != length) { `,
+              indent +
+                `result.${snakeCase(
+                  field.name
+                )} = try allocator.alloc(u8, length);`,
+              indent + `}`,
               indent +
                 `_ = try reader.readAll(result.${snakeCase(field.name)});`
               // indent + `  if err != nil {`,
@@ -261,7 +281,9 @@ function compileDecode(
               lines.push(
                 indent + `for (result.${snakeCase(field.name)}) |content, j| {`,
                 indent +
-                  `if (result.${snakeCase(field.name)}[j].len != length) {`
+                  `if (result.${snakeCase(
+                    field.name
+                  )}[j].len != length and length > 0) {`
               );
               lines.push(
                 indent +
@@ -275,7 +297,7 @@ function compileDecode(
                   indent +
                     `if ((result.${snakeCase(
                       field.name
-                    )} orelse &([_]u8{})).len != length) {`
+                    )} orelse &([_]u8{})).len != length and length >) {`
                 );
               } else {
                 lines.push(
