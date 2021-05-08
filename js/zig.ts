@@ -297,7 +297,7 @@ function compileDecode(
                   indent +
                     `if ((result.${snakeCase(
                       field.name
-                    )} orelse &([_]u8{})).len != length and length >) {`
+                    )} orelse &([_]u8{})).len != length) {`
                 );
               } else {
                 lines.push(
