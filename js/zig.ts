@@ -354,7 +354,7 @@ function compileDecode(
             lines.push(indent + `length = try reader.readIntNative(u32);`);
 
             lines.push(
-              indent + `if (result.${snakeCase(field.name)} != length) { `,
+              indent + `if (result.${snakeCase(field.name)}.len != length) { `,
               indent +
                 `result.${snakeCase(field.name)} = try allocator.alloc(${
                   TYPE_NAMES[field.type]
