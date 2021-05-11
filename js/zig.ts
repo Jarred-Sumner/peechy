@@ -16,9 +16,9 @@ const TYPE_NAMES = {
   float32: "f32",
   int32: "i32",
   lowp: "f32",
-  string: "[]u8",
+  string: "[]const u8",
   uint: "u32",
-  alphanumeric: "[]u8",
+  alphanumeric: "[]const u8",
 };
 
 function isDiscriminatedUnion(
@@ -260,9 +260,9 @@ function compileDecode(
               );
               lines.push(
                 indent +
-                  `result.${snakeCase(
-                    field.name
-                  )} = try allocator.alloc([]u8, array_count);`
+                  `result.${snakeCase(field.name)} = try allocator.alloc(${
+                    TYPE_NAMES.string
+                  }, array_count);`
               );
               lines.push(indent + `}`);
             }
