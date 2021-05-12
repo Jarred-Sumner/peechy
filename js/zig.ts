@@ -947,7 +947,7 @@ export function compileSchema(schema: Schema): string {
 
           let isOptional = definition.kind === "MESSAGE";
           if (field.isArray && isPrimitive) {
-            typeName = "[]" + singleTypeName;
+            typeName = "[]const " + singleTypeName;
           } else if (field.isArray) {
             typeName = "[]" + singleTypeName;
           } else if (isPrimitive) {
