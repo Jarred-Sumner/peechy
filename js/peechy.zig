@@ -58,7 +58,7 @@ pub const Reader = struct {
         return E.InvalidValue;
     }
 
-    pub fn readArray(this: *Self, comptime T: type) ![]T {
+    pub fn readArray(this: *Self, comptime T: type) ![]const T {
         const length = try this.readInt(u32);
         if (length == 0) {
             return &([_]T{});
@@ -92,7 +92,8 @@ pub const Reader = struct {
                         }
                     },
                     .Enum => |type_info| {
-                        return std.meta.cast([]T, std.mem.readIntSliceNative(type_info.tag_type, try this.read(length * @sizeOf(type_info.tag_type))));
+                        const enum_values = try this.read(length * @sizeOf(type_info.tag_type));
+                        return @ptrCast([*]T, enum_values.ptr)[0..length];
                     },
                     else => {},
                 }
@@ -136,6 +137,10 @@ pub const Reader = struct {
                 return try this.readByte();
             },
             []const u8 => {
+                return try this.readArray(u8);
+            },
+
+            []const []const u8 => {
                 return try this.readArray([]const u8);
             },
             []u8 => {
@@ -150,8 +155,8 @@ pub const Reader = struct {
                         switch (Struct.layout) {
                             .Packed => {
                                 const sizeof = @sizeOf(T);
-                                var slice = try this.read(sizeof * length);
-                                return std.mem.bytesAsSlice(T, slice);
+                                var slice = try this.read(sizeof);
+                                return @ptrCast(*T, slice[0..sizeof]).*;
                             },
                             else => {},
                         }
@@ -197,6 +202,37 @@ pub fn Writer(comptime WritableStream: type) type {
 
         pub fn writeEnum(this: *Self, val: anytype) !void {
             try this.writeInt(@enumToInt(val));
+        }
+
+        pub fn writeValue(this: *Self, slice: anytype) !void {
+            switch (@TypeOf(slice)) {
+                []u8,
+                []u16,
+                []u32,
+                []i16,
+                []i32,
+                []i8,
+                []const u8,
+                []const u16,
+                []const u32,
+                []const i16,
+                []const i32,
+                []const i8,
+                => {
+                    try this.writeArray(@TypeOf(slice), slice);
+                },
+
+                u8 => {
+                    try this.write(slice);
+                },
+                u16, u32, i16, i32, i8 => {
+                    try this.write(std.mem.asBytes(slice));
+                },
+
+                else => {
+                    try slice.encode(this);
+                },
+            }
         }
 
         pub fn writeArray(this: *Self, comptime T: type, slice: anytype) !void {

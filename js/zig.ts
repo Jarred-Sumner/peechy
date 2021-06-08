@@ -122,7 +122,7 @@ function compileDecode(
     let fieldType = field.type;
     if (aliases[fieldType]) fieldType = aliases[fieldType];
     const zig_name = snakeCase(field.name);
-    const zig_typename = TYPE_NAMES[fieldType] || pascalCase(fieldType);
+    let zig_typename = TYPE_NAMES[fieldType] || pascalCase(fieldType);
     if (definition.kind === "MESSAGE") {
       lines.push(`${indent}${i + 1} => {`);
       indent += "  ";
@@ -201,26 +201,26 @@ function compileEncode(
     let fieldType = field.type;
     if (aliases[fieldType]) fieldType = aliases[fieldType];
 
-    const zig_name = snakeCase(field.name);
+    var zig_name = snakeCase(field.name);
     const zig_typename = TYPE_NAMES[fieldType] || pascalCase(fieldType);
 
     if (definition.kind === "MESSAGE") {
       lines.push(`if (this.${zig_name}) |${zig_name}| {`);
       lines.push(`  try writer.writeFieldID(${j + 1});`);
+    } else {
+      zig_name = `this.${zig_name}`;
     }
 
-    if (
-      field.isArray ||
-      field.type === "string" ||
-      field.type === "alphanumeric"
-    ) {
-      lines.push(`   try writer.writeArray(${zig_name});`);
+    if (field.isArray) {
+      lines.push(`   try writer.writeArray(${zig_typename}, ${zig_name});`);
     } else if (INTEGER_TYPES[fieldType]) {
       lines.push(`   try writer.writeInt(${zig_name});`);
     } else if (fieldType === "bool") {
       lines.push(
         `   try writer.writeInt(@intCast(u8, @boolToInt(${zig_name})));`
       );
+    } else if (field.type === "string" || field.type === "alphanumeric") {
+      lines.push(`   try writer.writeValue(${zig_name});`);
     } else {
       const specific_field_type = definitions[fieldType];
       switch (specific_field_type.kind) {
@@ -393,10 +393,8 @@ export function compileSchema(schema: Schema): string {
             TYPE_NAMES[field.type] || pascalCase(definitions[field.type].name);
 
           let isOptional = definition.kind === "MESSAGE";
-          if (field.isArray && isPrimitive) {
+          if (field.isArray) {
             typeName = "[]const " + singleTypeName;
-          } else if (field.isArray) {
-            typeName = "[]" + singleTypeName;
           } else if (isPrimitive) {
             typeName = (isOptional ? "?" : "") + singleTypeName;
           } else {
