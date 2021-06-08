@@ -151,6 +151,8 @@ function compileDecode(
     lines.push(`${indent}}`);
     lines.push(`${indent}}`);
     lines.push("unreachable;");
+  } else {
+    lines.push(`${indent} return this;`);
   }
   lines.push("}");
   return lines.join(`\n`);

@@ -11,6 +11,8 @@
     // This compiler run should
     // only output d.ts files
     "emitDeclarationOnly": true,
+    "typeRoots": ["./typeroot/types.d.ts", "@types"],
+    "types": ["@types/node"],
     "outFile": "peechy.d.ts"
   },
   "exclude": ["*.zig"]
