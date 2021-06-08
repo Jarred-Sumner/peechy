@@ -9,3 +9,6 @@ js/test
 test_schema.go
 
 zig-cache
+yarn.lock
+yarn-error.log
+js/zigtest.zig

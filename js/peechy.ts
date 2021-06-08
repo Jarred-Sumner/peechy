@@ -1,4 +1,4 @@
-export { Definition, Schema, DefinitionKind, Field } from "./schema";
+export type { Definition, Schema, DefinitionKind, Field } from "./schema";
 export { ByteBuffer } from "./bb";
 export { compileSchema, compileSchemaJS } from "./js";
 export { compileSchemaCallbackCPP } from "./cpp-callback";

@@ -1,7 +1,17 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "esnext",
     "module": "commonjs",
-    "strict": false
-  }
+    "strict": false,
+    // Tells TypeScript to read JS files, as
+    // normally they are ignored as source files
+    "allowJs": false,
+    // Generate d.ts files
+    "declaration": true,
+    // This compiler run should
+    // only output d.ts files
+    "emitDeclarationOnly": true,
+    "outFile": "peechy.d.ts"
+  },
+  "exclude": ["*.zig"]
 }
