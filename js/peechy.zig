@@ -219,7 +219,8 @@ pub fn Writer(comptime WritableStream: type) type {
                 []const i32,
                 []const i8,
                 => {
-                    try this.writeArray(@TypeOf(slice), slice);
+                    try this.writeInt(@truncate(u32, slice.len));
+                    try this.write(slice);
                 },
 
                 u8 => {
@@ -235,7 +236,17 @@ pub fn Writer(comptime WritableStream: type) type {
             }
         }
 
-        pub fn writeArray(this: *Self, comptime T: type, slice: anytype) !void {
+        pub fn writeArray(this: *Self, comptime BaseType: type, slice: anytype) !void {
+            comptime var T = BaseType;
+            comptime var base_type_info = @typeInfo(T);
+            // Always write enums as their "real" type
+            switch (base_type_info) {
+                .Enum => |Enum| {
+                    return try this.writeArray(Enum.tag_type, std.meta.cast([*]Enum.tag_type, slice.ptr)[0..slice.len]);
+                },
+                else => {},
+            }
+
             try this.writeInt(@truncate(u32, slice.len));
 
             switch (T) {
