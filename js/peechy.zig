@@ -17,7 +17,7 @@ pub const Reader = struct {
     }
 
     pub fn read(this: *Self, count: usize) ![]u8 {
-        const read_count = std.math.min(count, this.remain.len);
+        const read_count = @minimum(count, this.remain.len);
         if (read_count < count) {
             return error.EOF;
         }
@@ -29,7 +29,7 @@ pub const Reader = struct {
         return slice;
     }
 
-    pub fn readAs(this: *Self, comptime T: type) !T {
+    pub inline fn readAs(this: *Self, comptime T: type) !T {
         if (!std.meta.trait.hasUniqueRepresentation(T)) {
             @compileError(@typeName(T) ++ " must have unique representation.");
         }
@@ -37,7 +37,7 @@ pub const Reader = struct {
         return std.mem.bytesAsValue(T, try this.read(@sizeOf(T)));
     }
 
-    pub fn readByte(this: *Self) !u8 {
+    pub inline fn readByte(this: *Self) !u8 {
         return (try this.read(1))[0];
     }
 
@@ -58,29 +58,29 @@ pub const Reader = struct {
         return E.InvalidValue;
     }
 
-    pub fn readArray(this: *Self, comptime T: type) ![]const T {
+    pub inline fn readArray(this: *Self, comptime T: type) ![]const T {
         const length = try this.readInt(u32);
         if (length == 0) {
             return &([_]T{});
         }
 
-        switch (T) {
+        switch (comptime T) {
             u8 => {
                 return try this.read(length);
             },
             u16, u32, i8, i16, i32 => {
                 return std.mem.readIntSliceNative(T, this.read(length * @sizeOf(T)));
             },
-            []const u8 => {
+            [:0]const u8, []const u8 => {
                 var i: u32 = 0;
-                var array = try this.allocator.alloc([]const u8, length);
+                var array = try this.allocator.alloc(T, length);
                 while (i < length) : (i += 1) {
                     array[i] = try this.readArray(u8);
                 }
                 return array;
             },
             else => {
-                switch (@typeInfo(T)) {
+                switch (comptime @typeInfo(T)) {
                     .Struct => |Struct| {
                         switch (Struct.layout) {
                             .Packed => {
@@ -109,48 +109,48 @@ pub const Reader = struct {
         }
     }
 
-    pub fn readByteArray(this: *Self) ![]u8 {
+    pub inline fn readByteArray(this: *Self) ![]u8 {
         const length = try this.readInt(u32);
         if (length == 0) {
             return &([_]u8{});
         }
 
-        return try this.read(@intCast(usize, length));
+        return try this.read(@as(usize, length));
     }
 
-    pub fn readInt(this: *Self, comptime T: type) !T {
+    pub inline fn readInt(this: *Self, comptime T: type) !T {
         var slice = try this.read(@sizeOf(T));
 
         return std.mem.readIntSliceNative(T, slice);
     }
 
-    pub fn readBool(this: *Self) !bool {
+    pub inline fn readBool(this: *Self) !bool {
         return (try this.readByte()) > 0;
     }
 
-    pub fn readValue(this: *Self, comptime T: type) !T {
-        switch (T) {
+    pub inline fn readValue(this: *Self, comptime T: type) !T {
+        switch (comptime T) {
             bool => {
                 return try this.readBool();
             },
             u8 => {
                 return try this.readByte();
             },
-            []const u8 => {
+            [*:0]const u8, [:0]const u8, []const u8 => {
                 return try this.readArray(u8);
             },
 
-            []const []const u8 => {
+            []const [:0]const u8, []const [*:0]const u8, []const []const u8 => {
                 return try this.readArray([]const u8);
             },
-            []u8 => {
+            []u8, [:0]u8, [*:0]u8 => {
                 return try this.readArray([]u8);
             },
             u16, u32, i8, i16, i32 => {
                 return std.mem.readIntSliceNative(T, try this.read(@sizeOf(T)));
             },
             else => {
-                switch (@typeInfo(T)) {
+                switch (comptime @typeInfo(T)) {
                     .Struct => |Struct| {
                         switch (Struct.layout) {
                             .Packed => {
@@ -184,43 +184,70 @@ pub fn Writer(comptime WritableStream: type) type {
             return Self{ .writable = writable };
         }
 
-        pub fn write(this: *Self, bytes: anytype) !void {
+        pub inline fn write(this: *Self, bytes: anytype) !void {
             _ = try this.writable.write(bytes);
         }
 
-        pub fn writeByte(this: *Self, byte: u8) !void {
+        pub inline fn writeByte(this: *Self, byte: u8) !void {
             _ = try this.writable.write(&[1]u8{byte});
         }
 
-        pub fn writeInt(this: *Self, int: anytype) !void {
+        pub inline fn writeInt(this: *Self, int: anytype) !void {
             try this.write(std.mem.asBytes(&int));
         }
 
-        pub fn writeFieldID(this: *Self, comptime id: comptime_int) !void {
+        pub inline fn writeFieldID(this: *Self, comptime id: comptime_int) !void {
             try this.writeByte(id);
         }
 
-        pub fn writeEnum(this: *Self, val: anytype) !void {
+        pub inline fn writeEnum(this: *Self, val: anytype) !void {
             try this.writeInt(@enumToInt(val));
         }
 
-        pub fn writeValue(this: *Self, slice: anytype) !void {
-            switch (@TypeOf(slice)) {
-                []u8,
+        pub fn writeValue(this: *Self, comptime SliceType: type, slice: SliceType) !void {
+            switch (SliceType) {
                 []u16,
                 []u32,
                 []i16,
                 []i32,
                 []i8,
-                []const u8,
                 []const u16,
                 []const u32,
                 []const i16,
                 []const i32,
                 []const i8,
+                [:0]u16,
+                [:0]u32,
+                [:0]i16,
+                [:0]i32,
+                [:0]i8,
+                [:0]const u16,
+                [:0]const u32,
+                [:0]const i16,
+                [:0]const i32,
+                [:0]const i8,
+                [*:0]u16,
+                [*:0]u32,
+                [*:0]i16,
+                [*:0]i32,
+                [*:0]i8,
+                [*:0]const u16,
+                [*:0]const u32,
+                [*:0]const i16,
+                [*:0]const i32,
+                [*:0]const i8,
                 => {
-                    try this.writeInt(@truncate(u32, slice.len));
-                    try this.write(slice);
+                    try this.writeArray(SliceType, slice);
+                },
+
+                []u8,
+                []const u8,
+                [:0]u8,
+                [:0]const u8,
+                [*:0]u8,
+                [*:0]const u8,
+                => {
+                    try this.writeArray(u8, slice);
                 },
 
                 u8 => {
@@ -236,17 +263,7 @@ pub fn Writer(comptime WritableStream: type) type {
             }
         }
 
-        pub fn writeArray(this: *Self, comptime BaseType: type, slice: anytype) !void {
-            comptime var T = BaseType;
-            comptime var base_type_info = @typeInfo(T);
-            // Always write enums as their "real" type
-            switch (base_type_info) {
-                .Enum => |Enum| {
-                    return try this.writeArray(Enum.tag_type, std.meta.cast([*]Enum.tag_type, slice.ptr)[0..slice.len]);
-                },
-                else => {},
-            }
-
+        pub inline fn writeArray(this: *Self, comptime T: type, slice: anytype) !void {
             try this.writeInt(@truncate(u32, slice.len));
 
             switch (T) {
@@ -256,6 +273,7 @@ pub fn Writer(comptime WritableStream: type) type {
                 u16, u32, i16, i32, i8 => {
                     try this.write(std.mem.asBytes(slice));
                 },
+                [:0]u8,
                 []u8,
                 []u16,
                 []u32,
@@ -263,11 +281,32 @@ pub fn Writer(comptime WritableStream: type) type {
                 []i32,
                 []i8,
                 []const u8,
+                [:0]const u8,
                 []const u16,
                 []const u32,
                 []const i16,
                 []const i32,
                 []const i8,
+                [:0]u16,
+                [:0]u32,
+                [:0]i16,
+                [:0]i32,
+                [:0]i8,
+                [:0]const u16,
+                [:0]const u32,
+                [:0]const i16,
+                [:0]const i32,
+                [:0]const i8,
+                [*:0]u16,
+                [*:0]u32,
+                [*:0]i16,
+                [*:0]i32,
+                [*:0]i8,
+                [*:0]const u16,
+                [*:0]const u32,
+                [*:0]const i16,
+                [*:0]const i32,
+                [*:0]const i8,
                 => {
                     for (slice) |num_slice| {
                         try this.writeArray(std.meta.Child(@TypeOf(num_slice)), num_slice);
@@ -281,192 +320,13 @@ pub fn Writer(comptime WritableStream: type) type {
             }
         }
 
-        pub fn endMessage(this: *Self) !void {
+        pub inline fn endMessage(this: *Self) !void {
             try this.writeByte(0);
         }
     };
 }
 
-pub const ByteWriter = Writer(std.io.FixedBufferStream([]u8));
+pub const ByteWriter = Writer(*std.io.FixedBufferStream([]u8));
 pub const FileWriter = Writer(std.fs.File);
 
 // --- DIVIDING LINE ----
-
-const ExamplePackedStruct = packed struct {
-    len: u32 = 0,
-    offset: u32 = 0,
-
-    pub fn encode(this: *const ExamplePackedStruct, writer: anytype) !void {
-        try writer.write(std.mem.asBytes(this));
-    }
-
-    pub fn decode(reader: anytype) !ExamplePackedStruct {
-        return try reader.readAs(ExamplePackedStruct);
-    }
-};
-
-const ExampleStruct = struct {
-    name: []const u8 = "",
-    age: u32 = 0,
-
-    pub fn encode(this: *const ExampleStruct, writer: anytype) !void {
-        try writer.writeArray(u8, this.name);
-        try writer.writeInt(this.age);
-    }
-
-    pub fn decode(reader: anytype) !ExampleStruct {
-        var this = std.mem.zeroes(ExampleStruct);
-        this.name = try reader.readArray(u8);
-        this.age = try reader.readInt(u32);
-
-        return this;
-    }
-};
-
-const EnumValue = enum(u8) { hey, hi, heyopoo };
-
-const ExampleMessage = struct {
-    examples: ?[]ExampleStruct = &([_]ExampleStruct{}),
-    pack: ?[]ExamplePackedStruct = &([_]ExamplePackedStruct{}),
-    hey: ?u8 = 0,
-    hey16: ?u16 = 0,
-    hey32: ?u16 = 0,
-    heyi32: ?i32 = 0,
-    heyi16: ?i16 = 0,
-    heyi8: ?i8 = 0,
-    boolean: ?bool = null,
-    heyooo: ?EnumValue = null,
-
-    pub fn encode(this: *const ExampleMessage, writer: anytype) !void {
-        if (this.examples) |examples| {
-            try writer.writeFieldID(1);
-            try writer.writeArray(ExampleStruct, examples);
-        }
-
-        if (this.pack) |pack| {
-            try writer.writeFieldID(2);
-            try writer.writeArray(ExamplePackedStruct, pack);
-        }
-
-        if (this.hey) |hey| {
-            try writer.writeFieldID(3);
-            try writer.writeInt(hey);
-        }
-        if (this.hey16) |hey16| {
-            try writer.writeFieldID(4);
-            try writer.writeInt(hey16);
-        }
-        if (this.hey32) |hey32| {
-            try writer.writeFieldID(5);
-            try writer.writeInt(hey32);
-        }
-        if (this.heyi32) |heyi32| {
-            try writer.writeFieldID(6);
-            try writer.writeInt(heyi32);
-        }
-        if (this.heyi16) |heyi16| {
-            try writer.writeFieldID(7);
-            try writer.writeInt(heyi16);
-        }
-        if (this.heyi8) |heyi8| {
-            try writer.writeFieldID(8);
-            try writer.writeInt(heyi8);
-        }
-        if (this.boolean) |boolean| {
-            try writer.writeFieldID(9);
-            try writer.writeInt(boolean);
-        }
-
-        if (this.heyooo) |heyoo| {
-            try writer.writeFieldID(10);
-            try writer.writeEnum(heyoo);
-        }
-
-        try writer.endMessage();
-    }
-
-    pub fn decode(reader: anytype) !ExampleMessage {
-        var this = std.mem.zeroes(ExampleMessage);
-        while (true) {
-            switch (try reader.readByte()) {
-                0 => {
-                    return this;
-                },
-
-                1 => {
-                    this.examples = try reader.readArray(std.meta.Child(@TypeOf(this.examples.?)));
-                },
-                2 => {
-                    this.pack = try reader.readArray(std.meta.Child(@TypeOf(this.pack.?)));
-                },
-                3 => {
-                    this.hey = try reader.readValue(@TypeOf(this.hey.?));
-                },
-                4 => {
-                    this.hey16 = try reader.readValue(@TypeOf(this.hey16.?));
-                },
-                5 => {
-                    this.hey32 = try reader.readValue(@TypeOf(this.hey32.?));
-                },
-                6 => {
-                    this.heyi32 = try reader.readValue(@TypeOf(this.heyi32.?));
-                },
-                7 => {
-                    this.heyi16 = try reader.readValue(@TypeOf(this.heyi16.?));
-                },
-                8 => {
-                    this.heyi8 = try reader.readValue(@TypeOf(this.heyi8.?));
-                },
-                9 => {
-                    this.boolean = try reader.readValue(@TypeOf(this.boolean.?));
-                },
-                10 => {
-                    this.heyooo = try reader.readValue(@TypeOf(this.heyooo.?));
-                },
-                else => {
-                    return error.InvalidValue;
-                },
-            }
-        }
-
-        return this;
-    }
-};
-
-test "ExampleMessage" {
-    var base = std.mem.zeroes(ExampleMessage);
-    base.hey = 1;
-    var buf: [4096]u8 = undefined;
-    var writable = std.io.fixedBufferStream(&buf);
-    var writer = ByteWriter.init(writable);
-    var examples = [_]ExamplePackedStruct{
-        .{ .len = 2, .offset = 5 },
-        .{ .len = 0, .offset = 10 },
-    };
-
-    var more_examples = [_]ExampleStruct{
-        .{ .name = "bacon", .age = 10 },
-        .{ .name = "slime", .age = 300 },
-    };
-    base.examples = &more_examples;
-    base.pack = &examples;
-    base.heyooo = EnumValue.hey;
-    try base.encode(&writer);
-    var reader = Reader.init(&buf, std.heap.c_allocator);
-    var compare = try ExampleMessage.decode(&reader);
-    try std.testing.expectEqual(base.hey orelse 255, 1);
-
-    const cmp_pack = compare.pack.?;
-    for (cmp_pack) |item, id| {
-        try std.testing.expectEqual(item, examples[id]);
-    }
-
-    const cmp_ex = compare.examples.?;
-    for (cmp_ex) |item, id| {
-        try std.testing.expectEqualStrings(item.name, more_examples[id].name);
-        try std.testing.expectEqual(item.age, more_examples[id].age);
-    }
-
-    try std.testing.expectEqual(cmp_pack[0].len, examples[0].len);
-    try std.testing.expectEqual(base.heyooo, compare.heyooo);
-}

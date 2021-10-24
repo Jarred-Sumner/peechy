@@ -216,11 +216,11 @@ function compileEncode(
     } else if (INTEGER_TYPES[fieldType]) {
       lines.push(`   try writer.writeInt(${zig_name});`);
     } else if (fieldType === "bool") {
-      lines.push(
-        `   try writer.writeInt(@intCast(u8, @boolToInt(${zig_name})));`
-      );
+      lines.push(`   try writer.writeInt(@as(u8, @boolToInt(${zig_name})));`);
     } else if (field.type === "string" || field.type === "alphanumeric") {
-      lines.push(`   try writer.writeValue(${zig_name});`);
+      lines.push(
+        `   try writer.writeValue(@TypeOf(${zig_name}), ${zig_name});`
+      );
     } else {
       const specific_field_type = definitions[fieldType];
       switch (specific_field_type.kind) {
@@ -230,7 +230,9 @@ function compileEncode(
           break;
         }
         default: {
-          lines.push(`   try writer.writeValue(${zig_name});`);
+          lines.push(
+            `   try writer.writeValue(@TypeOf(${zig_name}), ${zig_name});`
+          );
           break;
         }
       }

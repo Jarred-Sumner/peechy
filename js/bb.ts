@@ -9,34 +9,33 @@ let int8Buffer = new Int8Array(int32.buffer);
 let textDecoder: TextDecoder;
 let textEncoder: TextEncoder;
 
-export let ArrayBufferType =
+let ArrayBufferType =
   typeof SharedArrayBuffer !== "undefined" ? SharedArrayBuffer : ArrayBuffer;
-
 export class ByteBuffer {
-  private _data: Uint8Array;
-  private _index: number;
+  data: Uint8Array;
+  index: number;
   length: number;
 
   constructor(data?: Uint8Array, addViews = false) {
     if (data && !(data instanceof Uint8Array)) {
       throw new Error("Must initialize a ByteBuffer with a Uint8Array");
     }
-    this._data = data || new Uint8Array(256);
-    this._index = 0;
+    this.data = data || new Uint8Array(256);
+    this.index = 0;
     this.length = data ? data.length : 0;
   }
 
   toUint8Array(): Uint8Array {
-    return this._data.subarray(0, this.length);
+    return this.data.subarray(0, this.length);
   }
 
   readByte(): number {
     //#ifdef ASSERTIONS
-    if (this._index + 1 > this._data.length) {
+    if (this.index + 1 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
-    return this._data[this._index++];
+    return this.data[this.index++];
   }
 
   readAlphanumeric(): string {
@@ -44,26 +43,26 @@ export class ByteBuffer {
       textDecoder = new TextDecoder("utf-8");
     }
 
-    let start = this._index;
+    let start = this.index;
     let char = 256;
     const end = this.length - 1;
-    while (this._index < end && char > 0) {
-      char = this._data[this._index++];
+    while (this.index < end && char > 0) {
+      char = this.data[this.index++];
     }
 
-    return String.fromCharCode(...this._data.subarray(start, this._index - 1));
+    return String.fromCharCode(...this.data.subarray(start, this.index - 1));
   }
 
   writeAlphanumeric(contents: string) {
     //#ifdef ASSERTIONS
-    if (this.length + 1 > this._data.length) {
+    if (this.length + 1 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
 
     let index = this.length;
     this._growBy(contents.length);
-    const data = this._data;
+    const data = this.data;
     let i = 0;
     let code = 0;
     while (i < contents.length) {
@@ -77,31 +76,31 @@ export class ByteBuffer {
 
   readFloat32(): number {
     //#ifdef ASSERTIONS
-    if (this._index + 4 > this._data.length) {
+    if (this.index + 4 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
     // TODO: see if DataView is faster
-    uint8Buffer[0] = this._data[this._index++];
-    uint8Buffer[1] = this._data[this._index++];
-    uint8Buffer[2] = this._data[this._index++];
-    uint8Buffer[3] = this._data[this._index++];
+    uint8Buffer[0] = this.data[this.index++];
+    uint8Buffer[1] = this.data[this.index++];
+    uint8Buffer[2] = this.data[this.index++];
+    uint8Buffer[3] = this.data[this.index++];
     return float32[0];
   }
 
   readByteArray(): Uint8Array {
     let length = this.readVarUint();
-    let start = this._index;
+    let start = this.index;
     let end = start + length;
     //#ifdef ASSERTIONS
-    if (end > this._data.length) {
+    if (end > this.data.length) {
       throw new Error("Read array out of bounds");
     }
     //#endif
-    this._index = end;
+    this.index = end;
     // Copy into a new array instead of just creating another view.
     let result = new Uint8Array(new ArrayBufferType(length));
-    result.set(this._data.subarray(start, end));
+    result.set(this.data.subarray(start, end));
     return result;
   }
 
@@ -151,8 +150,8 @@ export class ByteBuffer {
   }
 
   readVarFloat(): number {
-    let index = this._index;
-    let data = this._data;
+    let index = this.index;
+    let data = this.data;
     let length = data.length;
 
     //#ifdef ASSERTIONS
@@ -163,7 +162,7 @@ export class ByteBuffer {
     //#endif
     let first = data[index];
     if (first === 0) {
-      this._index = index + 1;
+      this.index = index + 1;
       return 0;
     }
 
@@ -176,7 +175,7 @@ export class ByteBuffer {
       (data[index + 1] << 8) |
       (data[index + 2] << 16) |
       (data[index + 3] << 24);
-    this._index = index + 4;
+    this.index = index + 4;
 
     // Move the exponent back into place
     bits = (bits << 23) | (bits >>> 9);
@@ -188,27 +187,27 @@ export class ByteBuffer {
 
   readUint32(): number {
     //#ifdef ASSERTIONS
-    if (this._index + 4 > this._data.length) {
+    if (this.index + 4 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
     // TODO: see if DataView is faster
-    uint8Buffer[0] = this._data[this._index++];
-    uint8Buffer[1] = this._data[this._index++];
-    uint8Buffer[2] = this._data[this._index++];
-    uint8Buffer[3] = this._data[this._index++];
+    uint8Buffer[0] = this.data[this.index++];
+    uint8Buffer[1] = this.data[this.index++];
+    uint8Buffer[2] = this.data[this.index++];
+    uint8Buffer[3] = this.data[this.index++];
     return uint32[0];
   }
 
   readUint16(): number {
     //#ifdef ASSERTIONS
-    if (this._index + 2 > this._data.length) {
+    if (this.index + 2 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
     // TODO: see if DataView is faster
-    uint8Buffer[0] = this._data[this._index++];
-    uint8Buffer[1] = this._data[this._index++];
+    uint8Buffer[0] = this.data[this.index++];
+    uint8Buffer[1] = this.data[this.index++];
     return uint16[0];
   }
 
@@ -229,38 +228,38 @@ export class ByteBuffer {
 
   readInt32(): number {
     //#ifdef ASSERTIONS
-    if (this._index + 4 > this._data.length) {
+    if (this.index + 4 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
     // TODO: see if DataView is faster
-    uint8Buffer[0] = this._data[this._index++];
-    uint8Buffer[1] = this._data[this._index++];
-    uint8Buffer[2] = this._data[this._index++];
-    uint8Buffer[3] = this._data[this._index++];
+    uint8Buffer[0] = this.data[this.index++];
+    uint8Buffer[1] = this.data[this.index++];
+    uint8Buffer[2] = this.data[this.index++];
+    uint8Buffer[3] = this.data[this.index++];
     return int32[0];
   }
 
   readInt16(): number {
     //#ifdef ASSERTIONS
-    if (this._index + 2 > this._data.length) {
+    if (this.index + 2 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
     // TODO: see if DataView is faster
-    uint8Buffer[0] = this._data[this._index++];
-    uint8Buffer[1] = this._data[this._index++];
+    uint8Buffer[0] = this.data[this.index++];
+    uint8Buffer[1] = this.data[this.index++];
     return int16[0];
   }
 
   readInt8(): number {
     //#ifdef ASSERTIONS
-    if (this._index + 1 > this._data.length) {
+    if (this.index + 1 > this.data.length) {
       throw new Error("Index out of bounds");
     }
     //#endif
     // TODO: see if DataView is faster
-    uint8Buffer[0] = this._data[this._index++];
+    uint8Buffer[0] = this.data[this.index++];
     return int8Buffer[0];
   }
 
@@ -271,24 +270,24 @@ export class ByteBuffer {
   // This is not a null-terminated string.
   readString(): string {
     const length = this.readVarUint();
-    let start = this._index;
-    this._index += length;
+    let start = this.index;
+    this.index += length;
     if (!textDecoder) {
       textDecoder = new TextDecoder("utf8");
     }
 
-    return textDecoder.decode(this._data.subarray(start, this._index));
+    return textDecoder.decode(this.data.subarray(start, this.index));
   }
 
   static WIGGLE_ROOM = 1;
 
   private _growBy(amount: number): void {
-    if (this.length + amount > this._data.length) {
+    if (this.length + amount > this.data.length) {
       let data = new Uint8Array(
         Math.imul(this.length + amount, ByteBuffer.WIGGLE_ROOM) << 1
       );
-      data.set(this._data);
-      this._data = data;
+      data.set(this.data);
+      this.data = data;
     }
     this.length += amount;
   }
@@ -296,14 +295,14 @@ export class ByteBuffer {
   writeByte(value: number): void {
     let index = this.length;
     this._growBy(1);
-    this._data[index] = value;
+    this.data[index] = value;
   }
 
   writeByteArray(value: Uint8Array): void {
     this.writeVarUint(value.length);
     let index = this.length;
     this._growBy(value.length);
-    this._data.set(value, index);
+    this.data.set(value, index);
   }
 
   writeUint16ByteArray(value: Uint16Array): void {
@@ -360,7 +359,7 @@ export class ByteBuffer {
 
     // Endian-independent 32-bit write
     this._growBy(4);
-    let data = this._data;
+    let data = this.data;
     data[index] = bits;
     data[index + 1] = bits >> 8;
     data[index + 2] = bits >> 16;
@@ -372,7 +371,7 @@ export class ByteBuffer {
     this._growBy(4);
     float32[0] = value;
     // TODO: see if DataView is faster
-    this._data.set(uint8Buffer, index);
+    this.data.set(uint8Buffer, index);
   }
 
   writeVarUint(value: number): void {
@@ -389,15 +388,15 @@ export class ByteBuffer {
     this._growBy(2);
     // TODO: see if DataView is faster
     uint16[0] = value;
-    this._data[index++] = uint8Buffer[0];
-    this._data[index++] = uint8Buffer[1];
+    this.data[index++] = uint8Buffer[0];
+    this.data[index++] = uint8Buffer[1];
   }
 
   writeUint32(value: number): void {
     let index = this.length;
     this._growBy(4);
     uint32[0] = value;
-    this._data.set(uint8Buffer, index);
+    this.data.set(uint8Buffer, index);
   }
 
   writeVarInt(value: number): void {
@@ -410,7 +409,7 @@ export class ByteBuffer {
     this._growBy(1);
     // TODO: see if DataView is faster
     int8Buffer[0] = value;
-    this._data[index++] = uint8Buffer[0];
+    this.data[index++] = uint8Buffer[0];
   }
 
   writeInt16(value: number): void {
@@ -418,15 +417,15 @@ export class ByteBuffer {
     this._growBy(2);
     // TODO: see if DataView is faster
     int16[0] = value;
-    this._data[index++] = uint8Buffer[0];
-    this._data[index++] = uint8Buffer[1];
+    this.data[index++] = uint8Buffer[0];
+    this.data[index++] = uint8Buffer[1];
   }
 
   writeInt32(value: number): void {
     let index = this.length;
     this._growBy(4);
     int32[0] = value;
-    this._data.set(uint8Buffer, index);
+    this.data.set(uint8Buffer, index);
   }
 
   static LOW_PRECISION_VALUE = 10 ** 3;
@@ -453,16 +452,16 @@ export class ByteBuffer {
     // https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto#buffer_sizing
     this._growBy(value.length * 2 + 5);
 
-    const result = textEncoder.encodeInto(value, this._data.subarray(offset));
+    const result = textEncoder.encodeInto(value, this.data.subarray(offset));
     this.length = offset + result.written;
 
     // If our guess was incorrect, let's go back and fix it.
     if (result.written !== value.length) {
       uint32[0] = result.written;
-      this._data[initial_offset++] = uint8Buffer[0];
-      this._data[initial_offset++] = uint8Buffer[1];
-      this._data[initial_offset++] = uint8Buffer[2];
-      this._data[initial_offset++] = uint8Buffer[3];
+      this.data[initial_offset++] = uint8Buffer[0];
+      this.data[initial_offset++] = uint8Buffer[1];
+      this.data[initial_offset++] = uint8Buffer[2];
+      this.data[initial_offset++] = uint8Buffer[3];
     }
   }
 }
