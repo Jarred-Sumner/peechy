@@ -91,7 +91,7 @@ pub const Reader = struct {
                             else => {},
                         }
                     },
-                    .Enum => {
+                    .Enum => |type_info| {
                         const enum_values = try this.read(length * @sizeOf(type_info.tag_type));
                         return @ptrCast([*]T, enum_values.ptr)[0..length];
                     },
@@ -161,7 +161,7 @@ pub const Reader = struct {
                             else => {},
                         }
                     },
-                    .Enum => |type_info| {
+                    .Enum => {
                         return try this.readEnum(T);
                     },
                     else => {},
