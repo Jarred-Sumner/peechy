@@ -1,10 +1,10 @@
 {
   "name": "peechy",
-  "version": "0.4.27",
+  "version": "0.4.32",
   "description": "A schema-based binary format for efficiently encoding trees of data",
   "license": "MIT",
   "main": "peechy.node.js",
-  "types": "peechy.d.ts",
+  "types": "bb.d.ts",
   "bin": {
     "peechy": "cli.js"
   },
@@ -37,8 +37,8 @@
     "demo": "serve -p 5001 ../",
     "browser-iife": "esbuild browser.ts --format=iife --loader:.zig=text --bundle --global-name=peechy --platform=browser > peechy.min.js",
     "browser-esm": "esbuild browser.ts --format=esm --loader:.zig=text --bundle --platform=browser > peechy.js",
-    "bb-esm": "esbuild bb.ts --format=esm --loader:.zig=text --bundle --platform=browser > bb.cjs",
-    "bb-cjs": "esbuild bb.ts --format=cjs --loader:.zig=text --bundle --platform=node  > bb.mjs",
+    "bb-cjs": "esbuild bb.ts --format=esm --loader:.zig=text --bundle --platform=browser > bb.mjs",
+    "bb-esm": "esbuild bb.ts --format=cjs --loader:.zig=text --bundle --platform=node  > bb.cjs",
     "typedefs": "tsc -d && ls *.ts",
     "prepublishOnly": "npm run build && npm run typedefs"
   },

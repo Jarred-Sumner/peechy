@@ -1,7 +1,9 @@
+//@ts-ignore
 import { camelCase, pascalCase, snakeCase } from "change-case";
 import { parseSchema } from "./parser";
 import { Definition, Schema } from "./schema";
 import { error, quote } from "./util";
+//@ts-ignore
 import PREAMBLE from "./peechy.zig";
 
 const TYPE_NAMES = {

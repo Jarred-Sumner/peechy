@@ -1,3 +1,4 @@
+//@ts-ignore
 import { camelCase, pascalCase, snakeCase } from "change-case";
 import { parseSchema } from "./parser";
 import { Definition, Schema } from "./schema";

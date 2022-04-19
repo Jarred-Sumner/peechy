@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "downlevelIteration": true,
     "strict": false,
     // Tells TypeScript to read JS files, as
     // normally they are ignored as source files
@@ -11,9 +12,10 @@
     // This compiler run should
     // only output d.ts files
     "emitDeclarationOnly": true,
-    "typeRoots": ["./typeroot/types.d.ts", "@types"],
+    "rootDir": ".",
     "types": ["@types/node"],
-    "outFile": "peechy.d.ts"
+    "outDir": "."
   },
-  "exclude": ["*.zig"]
+  "exclude": ["*.zig"],
+  "include": ["*.ts"]
 }

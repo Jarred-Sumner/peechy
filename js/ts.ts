@@ -5,7 +5,7 @@ const KIWI_IMPORT_PATH = "peechy";
 
 export function compileSchemaTypeScript(schema: Schema): string {
   var indent = "";
-  var lines = [`import type {ByteBuffer} from "${KIWI_IMPORT_PATH}";\n`];
+  var lines = [`import type {ByteBuffer} from "${KIWI_IMPORT_PATH}/bb";\n`];
 
   if (schema.package !== null) {
     indent += "  ";

@@ -465,3 +465,5 @@ export class ByteBuffer {
     }
   }
 }
+
+export default ByteBuffer;
