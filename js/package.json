@@ -1,32 +1,44 @@
 {
   "name": "peechy",
-  "version": "0.4.24",
+  "version": "0.4.27",
   "description": "A schema-based binary format for efficiently encoding trees of data",
   "license": "MIT",
   "main": "peechy.node.js",
   "types": "peechy.d.ts",
-  "module": "peechy.js",
-  "browser": "peechy.js",
   "bin": {
     "peechy": "cli.js"
   },
   "files": [
     "cli.js",
     "peechy.node.js",
-    "bb.js",
+    "bb.mjs",
+    "bb.cjs",
     "bb.d.ts",
     "peechy.d.ts",
     "peechy.js",
     "peechy.min.js"
   ],
+  "exports": {
+    ".": {
+      "require": "./peechy.node.js",
+      "default": "./peechy.js"
+    },
+    "./bb": {
+      "require": "./bb.cjs",
+      "default": "./bb.mjs"
+    },
+    "./package.json": "./package.json"
+  },
   "typings": "peechy.d.ts",
   "scripts": {
     "cjs": "esbuild peechy.ts --format=cjs --bundle --loader:.zig=text --outfile=peechy.node.js --platform=node --target=node12; esbuild cli.ts --format=cjs --bundle --loader:.zig=text --outfile=cli.js --minify --platform=node --target=node12",
     "precjs": "rm ./*.d.ts; rm ./*.d.js; rm -f *.js",
-    "build": "npm run cjs && npm run browser-iife && npm run browser-esm",
+    "build": "npm run cjs && npm run browser-iife && npm run browser-esm && npm run bb-esm && npm run bb-cjs",
     "demo": "serve -p 5001 ../",
     "browser-iife": "esbuild browser.ts --format=iife --loader:.zig=text --bundle --global-name=peechy --platform=browser > peechy.min.js",
     "browser-esm": "esbuild browser.ts --format=esm --loader:.zig=text --bundle --platform=browser > peechy.js",
+    "bb-esm": "esbuild bb.ts --format=esm --loader:.zig=text --bundle --platform=browser > bb.cjs",
+    "bb-cjs": "esbuild bb.ts --format=cjs --loader:.zig=text --bundle --platform=node  > bb.mjs",
     "typedefs": "tsc -d && ls *.ts",
     "prepublishOnly": "npm run build && npm run typedefs"
   },

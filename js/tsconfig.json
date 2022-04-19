@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "commonjs",
+    "moduleResolution": "node",
     "strict": false,
     // Tells TypeScript to read JS files, as
     // normally they are ignored as source files

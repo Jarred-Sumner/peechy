@@ -17,6 +17,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
   lines.push(`type alphanumeric = string;`);
   lines.push(`type uint = number;`);
   lines.push(`type int8 = number;`);
+  lines.push(`type uint8 = number;`);
   lines.push(`type lowp = number;`);
   lines.push(`type int16 = number;`);
   lines.push(`type int32 = number;`);
@@ -36,7 +37,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
 
     if (definition.kind === "UNION") {
       unionsByName[definition.name] = i;
-      lines.push(indent + "export enum " + definition.name + "Type {");
+      lines.push(indent + "export const enum " + definition.name + "Type {");
 
       const descriminator = definition.fields[0];
       for (var j = 0; j < definition.fields.length; ) {
@@ -70,8 +71,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
       }
 
       lines.push(indent + "}");
-
-      lines.push(indent + "export const " + definition.name + "Keys = {");
+      lines.push(indent + "export const " + definition.name + "Keys: {");
       for (var j = 0; j < definition.fields.length; ) {
         const field = definition.fields[j];
 
@@ -102,7 +102,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
       if (!definition.fields.length) {
         lines.push(indent + "export type " + definition.name + " = any;");
       } else {
-        lines.push(indent + "export enum " + definition.name + " {");
+        lines.push(indent + "export const enum " + definition.name + " {");
 
         for (var j = 0; j < definition.fields.length; j++) {
           lines.push(
@@ -117,8 +117,7 @@ export function compileSchemaTypeScript(schema: Schema): string {
         }
 
         lines.push(indent + "}");
-
-        lines.push(indent + "export const " + definition.name + "Keys = {");
+        lines.push(indent + "export const " + definition.name + "Keys: {");
 
         for (var j = 0; j < definition.fields.length; j++) {
           lines.push(
