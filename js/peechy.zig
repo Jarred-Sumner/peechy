@@ -69,7 +69,7 @@ pub const Reader = struct {
                 return try this.read(length);
             },
             u16, u32, i8, i16, i32 => {
-                return std.mem.readInt(T, &this.read(length * @sizeOf(T))[0..length * @sizeOf(T)], @import("builtin").cpu.arch.endian());
+                return std.mem.readInt(T, this.read(length * @sizeOf(T))[0..length * @sizeOf(T)], @import("builtin").cpu.arch.endian());
             },
             [:0]const u8, []const u8 => {
                 var i: u32 = 0;
