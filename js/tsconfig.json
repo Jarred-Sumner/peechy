@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "ESNext",
-    "downlevelIteration": true,
+
     "strict": false,
     // Tells TypeScript to read JS files, as
     // normally they are ignored as source files
@@ -11,6 +11,8 @@
     "declaration": true,
     // This compiler run should
     // only output d.ts files
+    "skipLibCheck": true,
+
     "emitDeclarationOnly": true,
     "rootDir": ".",
     "types": ["@types/node"],
