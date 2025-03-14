@@ -1,6 +1,6 @@
 {
   "name": "peechy",
-  "version": "0.4.33",
+  "version": "0.4.310",
   "description": "A schema-based binary format for efficiently encoding trees of data",
   "license": "MIT",
   "main": "peechy.node.js",
@@ -47,7 +47,8 @@
     "url": "https://github.com/jarred-sumner/peechy.git"
   },
   "devDependencies": {
-    "@types/node": "^15.12.2",
+    "@types/node": "^22.13.10",
+    "esbuild": "^0.25.1",
     "mocha": "7.0.0",
     "rollup": "1.31.0",
     "serve": "^11.3.2",
